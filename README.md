@@ -23,6 +23,8 @@
 
 `页间-1.0.4-Tauri轻量版.exe` 是单文件便携版，约 8.28 MB，无需安装，双击即可运行。
 
+[下载最新 Windows 便携版](https://github.com/Mu-Wan/papery-epub-reader/releases/latest)
+
 系统要求：Windows 10 / 11，并启用 Microsoft Edge WebView2 Runtime。多数现代 Windows 系统已自带。
 
 ## 本地开发
