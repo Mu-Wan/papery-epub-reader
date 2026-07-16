@@ -11,6 +11,13 @@ const settingsButton = document.querySelector("#settingsButton");
 const settingsPanel = document.querySelector("#settingsPanel");
 let toastTimer;
 
+function setSettingsOpen(open) {
+  settingsPanel.hidden = !open;
+  settingsButton.setAttribute("aria-expanded", String(open));
+}
+
+const closeSettings = () => setSettingsOpen(false);
+
 function toast(message) {
   const element = document.querySelector("#toast");
   element.textContent = message;
@@ -38,8 +45,7 @@ async function showReader(book) {
 
 async function showLibrary() {
   closeReader();
-  settingsPanel.hidden = true;
-  settingsButton.setAttribute("aria-expanded", "false");
+  closeSettings();
   readerView.hidden = true;
   libraryView.hidden = false;
   await refresh();
@@ -69,10 +75,18 @@ input.addEventListener("change", async () => {
 });
 
 settingsButton.addEventListener("click", () => {
-  settingsPanel.hidden = !settingsPanel.hidden;
-  settingsButton.setAttribute("aria-expanded", String(!settingsPanel.hidden));
+  setSettingsOpen(settingsPanel.hidden);
 });
 
-setupReader(showLibrary);
+document.addEventListener("pointerdown", (event) => {
+  if (settingsPanel.hidden || settingsPanel.contains(event.target) || settingsButton.contains(event.target)) return;
+  closeSettings();
+});
+
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape") closeSettings();
+});
+
+setupReader(showLibrary, closeSettings);
 setupWindowControls();
 refresh();

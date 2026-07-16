@@ -1,12 +1,16 @@
 .reader-view {
   --paper: #f6f0e4;
+  --paper-texture: none;
+  --paper-texture-size: auto;
   --reader-margin: 48px;
   display: grid;
   width: 100%;
   height: 100%;
   grid-template-rows: 34px minmax(0, 1fr) 20px;
   overflow: hidden;
-  background: var(--paper);
+  background-color: var(--paper);
+  background-image: var(--paper-texture);
+  background-size: var(--paper-texture-size);
   transition: background .2s;
 }
 
@@ -32,7 +36,7 @@
   top: 68px;
   right: 8px;
   display: grid;
-  width: min(420px, calc(100vw - 36px));
+  width: min(500px, calc(100vw - 36px));
   grid-template-columns: repeat(3, 1fr);
   gap: 20px;
   padding: 22px;
@@ -46,8 +50,10 @@
 .settings-panel label span { display: flex; justify-content: space-between; }
 .settings-panel output { color: #222; }
 .settings-panel input { width: 100%; accent-color: #315c4c; }
-.paper-setting { display: flex; grid-column: 1 / -1; align-items: center; justify-content: space-between; color: #60615d; font-size: 13px; font-weight: 700; }
-.paper-choices { display: flex; gap: 10px; }
+.setting-row { display: flex; grid-column: 1 / -1; min-height: 36px; align-items: center; justify-content: space-between; gap: 16px; color: #60615d; font-size: 13px; font-weight: 700; }
+.font-choices, .paper-choices, .texture-choices { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
+.font-choice, .texture-choice { min-width: 54px; height: 32px; padding: 0 10px; border: 1px solid #9996; border-radius: 9px; color: #444; background-color: #f7f6f2; cursor: pointer; font-size: 12px; }
+.font-choice.active, .texture-choice.active { border-color: #315c4c; color: #244b3d; box-shadow: 0 0 0 2px #315c4c22; }
 .paper-choice { width: 34px; height: 34px; border: 1px solid #9997; border-radius: 50%; cursor: pointer; }
 .paper-choice.active { outline: 2px solid #315c4c; outline-offset: 3px; }
 
@@ -65,7 +71,7 @@
   .reader-header { grid-template-columns: 46px minmax(0, 1fr) 54px; padding: 0 6px; }
   .reader-title-wrap span { display: none; }
   .settings-panel { top: 68px; right: 10px; width: calc(100vw - 20px); grid-template-columns: 1fr; gap: 14px; }
-  .paper-setting { grid-column: auto; }
+  .setting-row { grid-column: auto; }
   .page-zone { width: 38px; }
   .reader-stage { padding: min(var(--reader-margin), 48px); }
 }

@@ -1,7 +1,7 @@
 {
   "name": "papery-epub-reader",
   "private": true,
-  "version": "1.0.4",
+  "version": "1.0.5",
   "description": "轻量本地 EPUB 阅读器",
   "type": "module",
   "scripts": {

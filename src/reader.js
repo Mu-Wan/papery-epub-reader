@@ -1,55 +1,22 @@
 import ePub from "epubjs";
 import { saveBook } from "./db.js";
-import { PAPERS, loadPreferences, savePreferences } from "./preferences.js";
+import { loadPreferences } from "./preferences.js";
+import { applyReaderTheme, setupSettingControls } from "./reader-settings.js";
 
 let book;
 let rendition;
 let record;
 let preferences = loadPreferences();
 let lastWheel = 0;
+let contentPointerDown = () => {};
 
-const elements = {};
-const getPaper = () => PAPERS.find((paper) => paper.id === preferences.paper) || PAPERS[0];
 const nextFrame = () => new Promise((resolve) => requestAnimationFrame(resolve));
 
 function applyReaderMargin() {
   document.querySelector("#readerView").style.setProperty("--reader-margin", `${preferences.margin}px`);
 }
 
-function updateTheme() {
-  if (!rendition) return;
-  const paper = getPaper();
-  const readerView = document.querySelector("#readerView");
-  readerView.style.setProperty("--paper", paper.color);
-  rendition.themes.register("papery", {
-    "html, body": { color: `${paper.ink} !important`, background: `${paper.color} !important`, margin: "0 !important" },
-    html: { "padding-top": "0 !important", "padding-bottom": "0 !important" },
-    p: { "line-height": `${preferences.lineHeight} !important` },
-  });
-  rendition.themes.select("papery");
-  rendition.themes.fontSize(`${preferences.fontSize}px`);
-}
-
-function updateControls() {
-  ["fontSize", "lineHeight", "margin"].forEach((name) => {
-    elements[name].value = preferences[name];
-    elements[`${name}Output`].value = preferences[name];
-  });
-  elements.paperChoices.replaceChildren(...PAPERS.map((paper) => {
-    const button = document.createElement("button");
-    button.className = `paper-choice ${paper.id === preferences.paper ? "active" : ""}`;
-    button.style.background = paper.color;
-    button.title = paper.label;
-    button.setAttribute("aria-label", paper.label);
-    button.addEventListener("click", () => {
-      preferences.paper = paper.id;
-      savePreferences(preferences);
-      updateControls();
-      updateTheme();
-    });
-    return button;
-  }));
-}
+const updateTheme = () => applyReaderTheme(rendition, preferences);
 
 function page(direction) {
   if (!rendition) return;
@@ -78,26 +45,14 @@ async function commitMargin() {
   rendition.resize(undefined, undefined, location);
 }
 
-export function setupReader(onBack) {
-  ["fontSize", "lineHeight", "margin", "fontSizeOutput", "lineHeightOutput", "marginOutput", "paperChoices"].forEach((id) => elements[id] = document.querySelector(`#${id}`));
+export function setupReader(onBack, onContentPointerDown) {
+  contentPointerDown = onContentPointerDown;
   document.querySelector("#prevButton").addEventListener("click", () => page("prev"));
   document.querySelector("#nextButton").addEventListener("click", () => page("next"));
   document.querySelector("#readerStage").addEventListener("wheel", onWheel, { passive: false });
   document.querySelector("#backButton").addEventListener("click", onBack);
   document.addEventListener("keydown", onKeydown);
-  ["fontSize", "lineHeight"].forEach((name) => elements[name].addEventListener("input", (event) => {
-    preferences[name] = Number(event.target.value);
-    elements[`${name}Output`].value = preferences[name];
-    savePreferences(preferences);
-    updateTheme();
-  }));
-  elements.margin.addEventListener("input", (event) => {
-    preferences.margin = Number(event.target.value);
-    elements.marginOutput.value = preferences.margin;
-    savePreferences(preferences);
-  });
-  elements.margin.addEventListener("change", commitMargin);
-  updateControls();
+  setupSettingControls(preferences, { onThemeChange: updateTheme, onMarginInput: applyReaderMargin, onMarginCommit: commitMargin });
 }
 
 export async function openReader(bookRecord) {
@@ -112,6 +67,7 @@ export async function openReader(bookRecord) {
   rendition.hooks.content.register((contents) => {
     contents.document.addEventListener("wheel", onWheel, { passive: false });
     contents.document.addEventListener("keydown", onKeydown);
+    contents.document.addEventListener("pointerdown", contentPointerDown);
   });
   rendition.on("relocated", async (location) => {
     const current = location.start.index + 1;
