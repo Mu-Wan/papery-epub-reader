@@ -1,0 +1,12 @@
+[package]
+name = "papery-reader"
+version = "1.0.4"
+description = "轻量本地 EPUB 阅读器"
+authors = ["Papery"]
+edition = "2021"
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }

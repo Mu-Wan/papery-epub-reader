@@ -1,0 +1,136 @@
+.metrics {
+  position: absolute;
+  top: 397px;
+  left: 0;
+  right: 0;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+}
+
+.metrics div {
+  display: flex;
+  min-height: 230px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border: 2px dashed #9fb2a5;
+  border-radius: 28px;
+  background: #ffffffa8;
+}
+
+.metrics strong {
+  font: 800 54px/1 Georgia, serif;
+  letter-spacing: -.04em;
+}
+
+.metrics span {
+  margin-top: 9px;
+  color: var(--green);
+  font-size: 20px;
+  font-weight: 800;
+}
+
+.metrics small {
+  margin-top: 18px;
+  color: #777a72;
+  font-size: 13px;
+}
+
+.tech {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 105px;
+  display: flex;
+  height: 76px;
+  align-items: center;
+  justify-content: center;
+  gap: 19px;
+  border-radius: 22px;
+  color: #eef5f0;
+  background: #253d35;
+  font: 800 15px/1 Georgia, serif;
+  letter-spacing: .13em;
+}
+
+.tech i { width: 5px; height: 5px; border-radius: 99px; background: #efc8af; }
+
+.privacy-flow {
+  position: absolute;
+  top: 420px;
+  left: 18px;
+  right: 18px;
+  display: grid;
+  grid-template-columns: 170px 1fr 180px;
+  align-items: center;
+}
+
+.book-box,
+.reader-box {
+  display: grid;
+  height: 180px;
+  place-items: center;
+  border: 2px solid #315f51;
+  border-radius: 32px;
+  color: #315f51;
+  background: #fffaf0;
+  font: 800 30px/1 Georgia, serif;
+  box-shadow: 0 18px 34px #34463c1c;
+}
+
+.reader-box { color: #fff; background: #315f51; }
+
+.arrow {
+  position: relative;
+  height: 2px;
+  margin: 0 22px;
+  background: #769484;
+}
+
+.arrow::after {
+  position: absolute;
+  top: -6px;
+  right: -1px;
+  width: 11px;
+  height: 11px;
+  border-top: 2px solid #769484;
+  border-right: 2px solid #769484;
+  content: "";
+  transform: rotate(45deg);
+}
+
+.arrow span {
+  position: absolute;
+  top: -34px;
+  left: 50%;
+  color: #747970;
+  font-size: 14px;
+  transform: translateX(-50%);
+  white-space: nowrap;
+}
+
+.privacy-list {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 94px;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+}
+
+.privacy-list div {
+  display: flex;
+  min-height: 116px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border: 2px dashed #bba48f;
+  border-radius: 24px;
+  color: #a05d45;
+  background: #f9e8d8;
+  font: 800 29px/1 sans-serif;
+}
+
+.privacy-list b { margin-top: 10px; color: #4e514c; font-size: 18px; }

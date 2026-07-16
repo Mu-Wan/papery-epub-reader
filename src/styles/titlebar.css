@@ -1,0 +1,109 @@
+.app-titlebar {
+  position: relative;
+  z-index: 100;
+  display: flex;
+  width: 100%;
+  height: 26px;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid #0000000d;
+  background: #f3f1ec;
+  color: #343632;
+  user-select: none;
+}
+
+.titlebar-brand {
+  display: flex;
+  min-width: 0;
+  height: 100%;
+  align-items: center;
+  gap: 7px;
+  padding-left: 9px;
+  font-family: "Segoe UI Variable", "Segoe UI", sans-serif;
+  font-size: 11px;
+}
+
+.titlebar-brand img {
+  width: 16px;
+  height: 16px;
+  flex: none;
+}
+
+.titlebar-brand span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.window-controls {
+  display: flex;
+  height: 100%;
+  margin-left: auto;
+}
+
+html:not(.tauri) .window-controls {
+  visibility: hidden;
+}
+
+.window-controls button {
+  position: relative;
+  display: grid;
+  width: 44px;
+  height: 100%;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  color: #343632;
+  background: transparent;
+  cursor: default;
+}
+
+.window-controls button:hover {
+  background: #0000000c;
+}
+
+.window-controls .close-control:hover {
+  color: white;
+  background: #c42b1c;
+}
+
+.minimize-icon {
+  width: 10px;
+  height: 1px;
+  background: currentColor;
+}
+
+.maximize-icon {
+  width: 10px;
+  height: 10px;
+  border: 1px solid currentColor;
+  border-radius: 1px;
+}
+
+.close-icon {
+  position: relative;
+  width: 12px;
+  height: 12px;
+}
+
+.close-icon::before,
+.close-icon::after {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 12px;
+  height: 1px;
+  content: "";
+  background: currentColor;
+  transform: translate(-50%, -50%) rotate(45deg);
+}
+
+.close-icon::after {
+  transform: translate(-50%, -50%) rotate(-45deg);
+}
+
+.app-shell {
+  width: 100%;
+  height: calc(100vh - 26px);
+  overflow: auto;
+}

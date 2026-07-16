@@ -1,0 +1,95 @@
+:root {
+  color: #20211f;
+  background: #f3f1ec;
+  font-family: Inter, "PingFang SC", "Microsoft YaHei", sans-serif;
+  font-synthesis: none;
+  --ink: #20211f;
+  --muted: #74756f;
+  --line: #deddd7;
+  --surface: rgba(255, 255, 255, 0.68);
+  --accent: #315c4c;
+}
+
+* { box-sizing: border-box; }
+html, body { width: 100%; height: 100%; min-width: 320px; margin: 0; overflow: hidden; }
+button, input, label { font: inherit; }
+button, label[for] { -webkit-tap-highlight-color: transparent; }
+[hidden] { display: none !important; }
+
+.library-view {
+  min-height: 100%;
+  padding: clamp(28px, 5vw, 68px);
+  background: radial-gradient(circle at 85% 5%, #fff 0, transparent 28%), #f3f1ec;
+}
+
+.library-header, .section-heading {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 24px;
+}
+
+.library-header { max-width: 1280px; margin: 0 auto 56px; }
+.eyebrow { margin: 0 0 12px; color: var(--accent); font-size: 13px; font-weight: 800; letter-spacing: .14em; }
+h1 { margin: 0; font-family: Georgia, "Songti SC", serif; font-size: clamp(52px, 8vw, 92px); font-weight: 500; line-height: .95; }
+.subtitle { margin: 18px 0 0; color: var(--muted); font-size: 17px; }
+
+.primary-button, .secondary-button {
+  display: inline-flex;
+  min-height: 46px;
+  align-items: center;
+  justify-content: center;
+  padding: 0 20px;
+  border: 1px solid var(--ink);
+  border-radius: 999px;
+  cursor: pointer;
+  font-weight: 700;
+  transition: transform .2s, box-shadow .2s;
+}
+.primary-button { color: white; background: var(--ink); }
+.secondary-button { margin-top: 10px; background: transparent; }
+.primary-button:hover, .secondary-button:hover { transform: translateY(-2px); box-shadow: 0 8px 18px #2222; }
+
+.shelf-section { max-width: 1280px; margin: auto; }
+.section-heading { padding-bottom: 16px; border-bottom: 1px solid var(--line); }
+h2 { margin: 0; font-size: 24px; }
+.book-count { color: var(--muted); }
+.book-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 28px 22px; padding-top: 28px; }
+
+.book-card { min-width: 0; cursor: pointer; }
+.book-cover {
+  position: relative;
+  display: flex;
+  aspect-ratio: 3 / 4.35;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  padding: 22px;
+  border-radius: 4px 12px 12px 4px;
+  color: #fff;
+  box-shadow: 0 15px 32px #292a271f, inset 4px 0 #ffffff26;
+  transition: transform .25s, box-shadow .25s;
+}
+.book-card:hover .book-cover { transform: translateY(-6px); box-shadow: 0 22px 40px #292a2733, inset 4px 0 #ffffff26; }
+.book-cover img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.cover-title { position: relative; z-index: 1; font-family: Georgia, "Songti SC", serif; font-size: 23px; line-height: 1.35; text-align: center; }
+.book-info { position: relative; padding-top: 14px; }
+.book-info h3 { overflow: hidden; margin: 0 30px 5px 0; font-size: 17px; line-height: 1.4; text-overflow: ellipsis; white-space: nowrap; }
+.book-info p { overflow: hidden; margin: 0; color: var(--muted); font-size: 14px; text-overflow: ellipsis; white-space: nowrap; }
+.delete-button { position: absolute; top: 9px; right: 0; border: 0; color: #999; background: transparent; cursor: pointer; font-size: 19px; }
+.delete-button:hover { color: #a23f3f; }
+
+.empty-state { display: flex; min-height: 430px; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
+.empty-state h3 { margin: 18px 0 6px; font-size: 22px; }
+.empty-state p { max-width: 440px; margin: 0 0 12px; color: var(--muted); line-height: 1.7; }
+.empty-mark { display: grid; width: 82px; height: 104px; place-items: center; border: 1px solid #bbb9b0; border-radius: 2px 8px 8px 2px; color: #777; font: 30px Georgia, "Songti SC", serif; box-shadow: inset 5px 0 #d9d7cf; }
+.toast { position: fixed; z-index: 20; bottom: 24px; left: 50%; padding: 11px 18px; border-radius: 999px; color: white; background: #20211fe8; opacity: 0; pointer-events: none; transform: translate(-50%, 12px); transition: .25s; }
+.toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+@media (max-width: 620px) {
+  .library-view { padding: 26px 20px; }
+  .library-header { align-items: flex-start; margin-bottom: 40px; }
+  .subtitle { font-size: 15px; }
+  .primary-button { min-height: 42px; padding: 0 15px; white-space: nowrap; }
+  .book-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 22px 16px; }
+}

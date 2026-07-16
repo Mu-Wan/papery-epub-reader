@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#f3f1ec" />
+    <title>页间 · EPUB 阅读器</title>
+    <link rel="icon" href="/src/assets/app-mark.svg" />
+    <link rel="stylesheet" href="/src/styles/base.css" />
+    <link rel="stylesheet" href="/src/styles/titlebar.css" />
+    <link rel="stylesheet" href="/src/styles/reader.css" />
+  </head>
+  <body>
+    <header id="appTitlebar" class="app-titlebar" data-tauri-drag-region>
+      <div class="titlebar-brand" data-tauri-drag-region>
+        <img src="/src/assets/app-mark.svg" alt="" draggable="false" />
+        <span data-tauri-drag-region>页间 · EPUB 阅读器</span>
+      </div>
+      <div class="window-controls">
+        <button id="minimizeButton" aria-label="最小化"><i class="minimize-icon"></i></button>
+        <button id="maximizeButton" aria-label="最大化或还原"><i class="maximize-icon"></i></button>
+        <button id="closeButton" class="close-control" aria-label="关闭"><i class="close-icon"></i></button>
+      </div>
+    </header>
+    <div class="app-shell">
+      <main id="libraryView" class="library-view">
+      <header class="library-header">
+        <div>
+          <p class="eyebrow">PAPERY READER</p>
+          <h1>页间</h1>
+          <p class="subtitle">一个安静、轻巧的本地 EPUB 书架。</p>
+        </div>
+        <label class="primary-button" for="bookInput">＋ 添加 EPUB</label>
+        <input id="bookInput" type="file" accept=".epub,application/epub+zip" multiple hidden />
+      </header>
+      <section class="shelf-section" aria-labelledby="shelfTitle">
+        <div class="section-heading">
+          <h2 id="shelfTitle">我的书架</h2>
+          <span id="bookCount" class="book-count">0 本</span>
+        </div>
+        <div id="emptyState" class="empty-state">
+          <div class="empty-mark">阅</div>
+          <h3>书架还是空的</h3>
+          <p>添加一本本地 EPUB，书籍和阅读进度只保存在这台设备上。</p>
+          <label class="secondary-button" for="bookInput">选择 EPUB 文件</label>
+        </div>
+        <div id="bookGrid" class="book-grid"></div>
+      </section>
+      </main>
+
+      <main id="readerView" class="reader-view" hidden>
+      <header class="reader-header">
+        <button id="backButton" class="icon-button back-button" aria-label="返回书架">←</button>
+        <div class="reader-title-wrap">
+          <strong id="readerTitle">书名</strong>
+          <span id="readerProgress">准备中</span>
+        </div>
+        <button id="settingsButton" class="text-button" aria-expanded="false">排版</button>
+      </header>
+      <aside id="settingsPanel" class="settings-panel" hidden>
+        <label><span>字号 <output id="fontSizeOutput">18</output></span><input id="fontSize" type="range" min="14" max="28" step="1" /></label>
+        <label><span>行距 <output id="lineHeightOutput">1.8</output></span><input id="lineHeight" type="range" min="1.3" max="2.4" step="0.1" /></label>
+        <label><span>四周边距 <output id="marginOutput">48</output></span><input id="margin" type="range" min="16" max="96" step="8" /></label>
+        <div class="paper-setting"><span>纸张</span><div id="paperChoices" class="paper-choices"></div></div>
+      </aside>
+      <section id="readerStage" class="reader-stage" aria-label="电子书正文">
+        <button id="prevButton" class="page-zone prev-zone" aria-label="上一页">‹</button>
+        <div id="viewer" class="viewer"><div class="loading">正在打开书页…</div></div>
+        <button id="nextButton" class="page-zone next-zone" aria-label="下一页">›</button>
+      </section>
+      <footer class="reader-footer">滚轮、左右方向键或点击两侧翻页</footer>
+      </main>
+      <div id="toast" class="toast" role="status" aria-live="polite"></div>
+    </div>
+    <script type="module" src="/src/app.js"></script>
+  </body>
+</html>

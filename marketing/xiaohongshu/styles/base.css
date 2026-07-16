@@ -1,0 +1,70 @@
+:root {
+  font-family: "Microsoft YaHei UI", "Microsoft YaHei", sans-serif;
+  color: #20231f;
+  background: #eeeae0;
+  font-synthesis: none;
+}
+
+* { box-sizing: border-box; }
+html, body, #app { width: 810px; height: 1080px; margin: 0; overflow: hidden; }
+
+.slide {
+  --green: #2f6957;
+  --ink: #20231f;
+  position: relative;
+  width: 810px;
+  height: 1080px;
+  padding: 52px 58px 38px;
+  overflow: hidden;
+  background: #f6f1e6;
+}
+
+.grain {
+  position: absolute;
+  inset: 0;
+  opacity: .16;
+  background-image: radial-gradient(#69665d .45px, transparent .45px);
+  background-size: 7px 7px;
+}
+
+.glow { position: absolute; border-radius: 999px; opacity: .6; }
+.glow-a { width: 370px; height: 370px; top: 80px; right: -200px; background: #cfe2d6; }
+.glow-b { width: 290px; height: 290px; left: -170px; bottom: 100px; background: #efd0b8; }
+.topbar, .content, .footer { position: relative; z-index: 2; }
+
+.topbar {
+  display: flex;
+  height: 40px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: .12em;
+}
+
+.brand span {
+  display: grid;
+  width: 31px;
+  height: 31px;
+  place-items: center;
+  border-radius: 9px;
+  color: #fff;
+  background: var(--green);
+}
+
+.series { color: #687068; font: 700 12px/1 Georgia, serif; letter-spacing: .2em; }
+.content { height: 894px; }
+.footer { display: flex; height: 54px; align-items: flex-end; justify-content: space-between; }
+.dots { display: flex; gap: 7px; padding-bottom: 4px; }
+.dots i { width: 7px; height: 7px; border-radius: 99px; background: #c8c5bb; }
+.dots i.active { width: 24px; background: var(--green); }
+.counter { color: #747870; font: 700 13px/1 Georgia, serif; letter-spacing: .12em; }
+.dark { color: #f8f5ed; background: #244d40; }
+.dark .series, .dark .counter { color: #b8cdc2; }
+.dark .brand span, .dark .dots i.active { color: #244d40; background: #f0d2bc; }

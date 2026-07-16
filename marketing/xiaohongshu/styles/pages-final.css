@@ -1,0 +1,98 @@
+.page-8::before,
+.page-8::after {
+  position: absolute;
+  border-radius: 999px;
+  content: "";
+  filter: blur(4px);
+}
+
+.page-8::before {
+  width: 430px;
+  height: 430px;
+  top: -170px;
+  right: -140px;
+  background: #386f5d;
+}
+
+.page-8::after {
+  width: 330px;
+  height: 330px;
+  left: -170px;
+  bottom: 20px;
+  background: #513f35;
+}
+
+.code-mark {
+  position: absolute;
+  top: 46px;
+  right: 0;
+  color: #ffffff12;
+  font: 800 142px/1 Georgia, serif;
+}
+
+.repo-card {
+  position: absolute;
+  top: 510px;
+  left: 10px;
+  right: 10px;
+  display: flex;
+  min-height: 205px;
+  flex-direction: column;
+  justify-content: center;
+  padding: 34px;
+  border: 2px dashed #7aa18e;
+  border-radius: 28px;
+  background: #ffffff10;
+}
+
+.repo-card span { color: #efcbb4; font: 800 16px/1 Georgia, serif; letter-spacing: .13em; }
+.repo-card b { margin-top: 18px; font-size: 30px; }
+.repo-card small { margin-top: 16px; color: #b9cec3; font-size: 16px; }
+
+.license {
+  position: absolute;
+  bottom: 96px;
+  left: 50%;
+  padding: 12px 20px;
+  border: 1px solid #88a99a;
+  border-radius: 999px;
+  color: #bdd2c7;
+  font: 800 13px/1 Georgia, serif;
+  letter-spacing: .16em;
+  transform: translateX(-50%);
+}
+
+.closing-logo {
+  display: grid;
+  width: 112px;
+  height: 112px;
+  margin: 62px auto 0;
+  place-items: center;
+  border-radius: 32px;
+  color: #fff;
+  background: var(--green);
+  box-shadow: 0 20px 42px #35544830;
+  font: 800 55px/1 Georgia, serif;
+  transform: rotate(-3deg);
+}
+
+.page-9 .heading { padding-top: 36px; }
+.page-9 .heading h2 { font-size: 55px; }
+
+.cta {
+  display: flex;
+  min-height: 126px;
+  margin-top: 52px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border: 2px dashed #a47b67;
+  border-radius: 28px;
+  color: #fff;
+  background: #2f6957;
+  box-shadow: 0 18px 38px #315d4f26;
+}
+
+.cta b { font-size: 25px; }
+.cta span { margin-top: 11px; color: #d7e5de; font-size: 15px; }
+.centered-pills { justify-content: center; margin-top: 25px; }
