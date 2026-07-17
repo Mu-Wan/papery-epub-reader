@@ -59,6 +59,11 @@ h2 { margin: 0; font-size: 24px; }
 .book-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 28px 22px; padding-top: 28px; }
 
 .book-card { min-width: 0; cursor: pointer; }
+.book-card.dragging { opacity: .28; }
+.book-card.drop-target .book-cover { outline: 3px solid #5f8374; outline-offset: 4px; transform: translateY(-4px); }
+.box-card.drop-target { border-color: #5f8374; box-shadow: 0 0 0 3px #5f83742e, 0 20px 45px #292a271b; }
+.book-drag-ghost { position: fixed; z-index: 1000; top: 0; left: 0; width: 110px; pointer-events: none; opacity: .86; filter: drop-shadow(0 16px 18px #292a2744); }
+.book-drag-ghost .book-info { display: none; }
 .book-cover {
   position: relative;
   display: flex;
@@ -89,7 +94,7 @@ h2 { margin: 0; font-size: 24px; }
 .toast.show { opacity: 1; transform: translate(-50%, 0); }
 
 @media (max-width: 620px) {
-  .library-view { padding: 18px 16px 24px; }
+  .library-view { padding: max(18px, env(safe-area-inset-top)) 16px max(24px, env(safe-area-inset-bottom)); }
   .library-header { margin-bottom: 14px; }
   .subtitle { font-size: 15px; }
   .primary-button { min-height: 42px; padding: 0 15px; white-space: nowrap; }

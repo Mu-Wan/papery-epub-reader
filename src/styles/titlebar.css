@@ -43,6 +43,10 @@
 
 html:not(.tauri) .app-titlebar { display: none; }
 html:not(.tauri) .app-shell { height: 100vh; }
+@media (max-width: 620px) {
+  html.tauri .app-titlebar { display: none; }
+  html.tauri .app-shell { height: 100dvh; }
+}
 
 .window-controls button {
   position: relative;

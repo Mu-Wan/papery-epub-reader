@@ -1,6 +1,10 @@
 import { requestResult, STORES, transact } from "./db.js";
 
-const sorted = (books) => books.sort((a, b) => (b.lastRead || b.addedAt) - (a.lastRead || a.addedAt));
+const sorted = (books) => books.sort((a, b) => {
+  const first = Number.isFinite(a.sortOrder) ? a.sortOrder : Number.MAX_SAFE_INTEGER;
+  const second = Number.isFinite(b.sortOrder) ? b.sortOrder : Number.MAX_SAFE_INTEGER;
+  return first - second || (b.lastRead || b.addedAt) - (a.lastRead || a.addedAt);
+});
 
 export async function listBooks() {
   let request;

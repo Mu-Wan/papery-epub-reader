@@ -9,25 +9,22 @@ import { setupPwaInstall } from "./pwa-install.js";
 import { setupPwaUpdates } from "./pwa-update.js";
 import { setupPersistentStorage } from "./storage.js";
 import { setupWindowControls } from "./window-controls.js";
+import { setupSettingsDialog } from "./settings-dialog.js";
+import { setupDismissiblePopovers } from "./dismiss-popovers.js";
+import { moveBookToBox, reorderBooks } from "./book-order.js";
 const byId = (id) => document.querySelector(`#${id}`);
 const libraryView = byId("libraryView");
 const readerView = byId("readerView");
-const settingsPanel = byId("settingsPanel");
 const state = { books: [], boxes: [], view: "library", boxId: null };
 let toastTimer;
 let shelfTransition;
-function setSettingsOpen(open) {
-  settingsPanel.hidden = !open;
-  byId("settingsBackdrop").hidden = !open;
-  byId("settingsButton").setAttribute("aria-expanded", String(open));
-}
-
+const closeSettings = setupSettingsDialog();
 function toast(message) {
   const element = byId("toast");
   element.textContent = message;
   element.classList.add("show");
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => element.classList.remove("show"), 2400);
+  toastTimer = setTimeout(() => element.classList.remove("show"), 4200);
 }
 
 async function refresh() {
@@ -69,7 +66,7 @@ async function showReader(book) {
 
 async function showLibrary() {
   await closeReader();
-  setSettingsOpen(false);
+  closeSettings();
   readerView.hidden = true;
   libraryView.hidden = false;
   await refresh();
@@ -134,11 +131,13 @@ const callbacks = {
     await transitionShelf();
   },
   onBoxAction,
+  onReorder: async (ids) => { await reorderBooks(ids); await refresh(); },
+  onMoveToBox: async (bookId, boxId) => {
+    await moveBookToBox(bookId, boxId, state.books);
+    toast("已拖入书盒");
+    await refresh();
+  },
 };
-
-byId("settingsButton").addEventListener("click", () => setSettingsOpen(settingsPanel.hidden));
-byId("settingsBackdrop").addEventListener("click", () => setSettingsOpen(false));
-document.addEventListener("keydown", (event) => { if (event.key === "Escape") setSettingsOpen(false); });
 
 setupReaderHistory(showLibrary);
 setupReader({ onBack: leaveReaderHistory, onProgress });
@@ -146,4 +145,5 @@ setupShelfControls({ state, refresh, render: transitionShelf, toast, ensureStora
 setupWindowControls();
 setupPwaInstall({ toast });
 setupPwaUpdates(toast);
+setupDismissiblePopovers();
 refresh();

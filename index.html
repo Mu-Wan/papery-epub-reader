@@ -29,14 +29,22 @@
     <div class="app-shell">
       <main id="libraryView" class="library-view">
       <header class="library-header">
-        <div>
+        <div class="library-brand">
+          <img class="library-brand-mark" src="/src/assets/app-mark.svg" alt="" />
+          <div class="library-brand-copy">
           <p class="eyebrow">PAPERY READER</p>
           <h1>页间</h1>
           <p class="subtitle">一个安静、轻巧的本地 EPUB 与 TXT 书架。</p>
+          <p class="mobile-brand-note">本地书架 · EPUB / TXT</p>
+          </div>
         </div>
         <div class="header-actions">
-          <button id="installPwaButton" class="install-button" type="button" hidden><span aria-hidden="true">↓</span> 安装页间</button>
+          <button id="installPwaButton" class="install-button" type="button" aria-label="安装页间" hidden>
+            <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 2.8v8.4m-3-3 3 3 3-3M4 12.4v2.8c0 1.1.7 1.8 1.8 1.8h8.4c1.1 0 1.8-.7 1.8-1.8v-2.8" /></svg>
+            <span>安装页间</span>
+          </button>
           <details class="backup-menu"><summary class="quiet-button">管理</summary><div>
+            <button id="protectStorageButton" type="button">保护本地书架</button>
             <button id="exportButton" type="button">导出备份</button>
             <button id="importBackupButton" type="button">合并恢复</button>
             <button id="overwriteBackupButton" type="button">覆盖恢复</button>
@@ -92,23 +100,37 @@
           <strong id="readerTitle">书名</strong>
           <span id="readerProgress">准备中</span>
         </div>
-        <button id="settingsButton" class="text-button" aria-expanded="false">排版</button>
+        <div class="reader-actions">
+          <button id="tocButton" class="text-button" aria-expanded="false">目录</button>
+          <button id="settingsButton" class="text-button" aria-expanded="false">排版</button>
+        </div>
       </header>
-      <aside id="settingsPanel" class="settings-panel" hidden>
-        <label><span>字号 <output id="fontSizeOutput">18</output></span><input id="fontSize" type="range" min="14" max="28" step="1" /></label>
-        <label><span>行距 <output id="lineHeightOutput">1.8</output></span><input id="lineHeight" type="range" min="1.3" max="2.4" step="0.1" /></label>
-        <label><span>四周边距 <output id="marginOutput">48</output></span><input id="margin" type="range" min="16" max="96" step="8" /></label>
-        <div class="setting-row"><span>字体</span><div id="fontChoices" class="font-choices"></div></div>
-        <div class="setting-row"><span>纸色</span><div id="paperChoices" class="paper-choices"></div></div>
-        <div class="setting-row"><span>纸质</span><div id="textureChoices" class="texture-choices"></div></div>
-      </aside>
-      <button id="settingsBackdrop" class="settings-backdrop" type="button" aria-label="关闭排版设置" hidden></button>
+      <dialog id="tocPanel" class="drawer-panel" aria-labelledby="tocTitle">
+        <div class="drawer-sheet">
+          <header class="drawer-heading"><strong id="tocTitle">目录</strong><button id="tocDoneButton" type="button">完成</button></header>
+          <nav id="tocList" class="toc-list" aria-label="书籍目录"></nav>
+        </div>
+      </dialog>
+      <dialog id="settingsPanel" class="settings-panel" aria-labelledby="settingsTitle">
+        <div class="settings-sheet">
+          <header class="settings-heading"><strong id="settingsTitle">阅读排版</strong><button id="settingsDoneButton" type="button">完成</button></header>
+          <div class="settings-controls">
+            <label><span>字号 <output id="fontSizeOutput">18</output></span><input id="fontSize" type="range" min="14" max="28" step="1" /></label>
+            <label><span>行距 <output id="lineHeightOutput">1.8</output></span><input id="lineHeight" type="range" min="1.3" max="2.4" step="0.1" /></label>
+            <label><span>左右边距 <output id="horizontalMarginOutput">48</output></span><input id="horizontalMargin" type="range" /></label>
+            <label><span>上下边距 <output id="verticalMarginOutput">32</output></span><input id="verticalMargin" type="range" /></label>
+            <div class="setting-row"><span>字体</span><div id="fontChoices" class="font-choices"></div></div>
+            <div class="setting-row"><span>纸色</span><div id="paperChoices" class="paper-choices"></div></div>
+            <div class="setting-row"><span>纸质</span><div id="textureChoices" class="texture-choices"></div></div>
+          </div>
+        </div>
+      </dialog>
       <section id="readerStage" class="reader-stage" aria-label="电子书正文">
         <button id="prevButton" class="page-zone prev-zone" aria-label="上一页">‹</button>
         <div id="viewer" class="viewer"></div>
         <button id="nextButton" class="page-zone next-zone" aria-label="下一页">›</button>
       </section>
-      <footer class="reader-footer"><span class="desktop-hint">滚轮、左右方向键或点击两侧翻页</span><span class="mobile-hint">左右滑动或点击两侧翻页</span></footer>
+      <footer class="reader-footer"><span class="desktop-hint">滚轮、方向键或靠近两侧翻页</span><span class="mobile-hint">上下或左右滑动翻页</span></footer>
       </main>
       <div id="toast" class="toast" role="status" aria-live="polite"></div>
       <dialog id="boxDialog" class="app-dialog">
@@ -117,6 +139,14 @@
           <p id="boxDialogBook" class="dialog-copy"></p>
           <select id="boxSelect" aria-label="选择书盒"></select>
           <div class="dialog-actions"><button value="cancel" class="quiet-button">取消</button><button id="boxDialogConfirm" value="confirm" class="primary-button">确认</button></div>
+        </form>
+      </dialog>
+      <dialog id="installHelpDialog" class="app-dialog install-help-dialog">
+        <form method="dialog">
+          <div class="install-help-icon"><img src="/src/assets/app-mark.svg" alt="" /></div>
+          <div><p class="dialog-eyebrow">安装到桌面</p><h2>把页间留在主屏幕</h2></div>
+          <p id="installHelpCopy" class="install-help-copy"></p>
+          <div class="dialog-actions"><button value="cancel" class="primary-button">知道了</button></div>
         </form>
       </dialog>
     </div>

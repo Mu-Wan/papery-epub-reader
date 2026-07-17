@@ -1,10 +1,12 @@
 import { createBookCard } from "./book-card.js";
+import { setupBookDrag } from "./book-drag.js";
 
 const byId = (id) => document.querySelector(`#${id}`);
 
 function createBoxCard(box, books, callbacks) {
   const card = document.createElement("article");
   card.className = "box-card";
+  card.dataset.boxId = box.id;
   const boxBooks = books.filter((book) => book.boxId === box.id);
   const open = document.createElement("button");
   open.className = "box-open";
@@ -67,6 +69,7 @@ export function renderLibrary(state, callbacks) {
   const grid = byId("bookGrid");
   grid.hidden = books.length === 0;
   grid.replaceChildren(...books.map((book) => createBookCard(book, callbacks.onOpen, callbacks.onBookAction)));
+  setupBookDrag(callbacks);
   const empty = byId("emptyState");
   empty.hidden = isLibraryOverview ? state.boxes.length + books.length > 0 : books.length > 0;
   empty.querySelector("h3").textContent = "这里还没有书";

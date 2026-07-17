@@ -1,0 +1,10 @@
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <!-- Base application theme. -->
+    <style name="Theme.papery_reader" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+        <item name="android:windowBackground">#F3F1EC</item>
+        <item name="android:statusBarColor">#F3F1EC</item>
+        <item name="android:navigationBarColor">#F3F1EC</item>
+        <item name="android:windowLightStatusBar">true</item>
+        <item name="android:windowLightNavigationBar">true</item>
+    </style>
+</resources>

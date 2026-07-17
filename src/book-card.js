@@ -55,6 +55,7 @@ function createCover(book) {
 export function createBookCard(book, onOpen, onAction) {
   const card = document.createElement("article");
   card.className = "book-card";
+  card.dataset.bookId = book.id;
   card.tabIndex = 0;
   card.setAttribute("role", "button");
   card.setAttribute("aria-label", `阅读《${book.title}》`);
