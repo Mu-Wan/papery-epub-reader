@@ -7,6 +7,9 @@
     <title>页间 · EPUB 阅读器</title>
     <link rel="icon" href="/src/assets/app-mark.svg" />
     <link rel="stylesheet" href="/src/styles/base.css" />
+    <link rel="stylesheet" href="/src/styles/library.css" />
+    <link rel="stylesheet" href="/src/styles/heatmap.css" />
+    <link rel="stylesheet" href="/src/styles/dialogs.css" />
     <link rel="stylesheet" href="/src/styles/titlebar.css" />
     <link rel="stylesheet" href="/src/styles/reader.css" />
   </head>
@@ -28,22 +31,46 @@
         <div>
           <p class="eyebrow">PAPERY READER</p>
           <h1>页间</h1>
-          <p class="subtitle">一个安静、轻巧的本地 EPUB 书架。</p>
+          <p class="subtitle">一个安静、轻巧的本地 EPUB 与 TXT 书架。</p>
         </div>
-        <label class="primary-button" for="bookInput">＋ 添加 EPUB</label>
-        <input id="bookInput" type="file" accept=".epub,application/epub+zip" multiple hidden />
+        <div class="header-actions">
+          <details class="backup-menu"><summary class="quiet-button">管理</summary><div>
+            <button id="exportButton" type="button">导出备份</button>
+            <button id="importBackupButton" type="button">合并恢复</button>
+            <button id="overwriteBackupButton" type="button">覆盖恢复</button>
+          </div></details>
+          <label class="primary-button" for="bookInput">＋ 添加书籍</label>
+        </div>
+        <input id="bookInput" type="file" accept=".epub,.txt,application/epub+zip,text/plain" multiple hidden />
+        <input id="backupInput" type="file" accept=".zip,application/zip" hidden />
       </header>
+      <section class="heatmap-section" aria-labelledby="heatmapTitle">
+        <div class="heatmap-heading"><div><p class="eyebrow">READING YEAR</p><h2 id="heatmapTitle">阅读足迹</h2></div><p id="heatmapSummary">过去一年 0 分钟</p></div>
+        <div class="heatmap-chart">
+          <div id="heatmapYears" class="heatmap-years" aria-hidden="true"></div>
+          <div id="heatmapMonths" class="heatmap-months" aria-hidden="true"></div>
+          <div class="heatmap-weekdays" aria-hidden="true"><span>周一</span><span>周二</span><span>周三</span><span>周四</span><span>周五</span><span>周六</span><span>周日</span></div>
+          <div id="heatmap" class="heatmap" aria-label="过去一年的阅读热力图"></div>
+        </div>
+        <div class="heatmap-legend"><span>少</span><i data-level="0"></i><i data-level="1"></i><i data-level="2"></i><i data-level="3"></i><i data-level="4"></i><span>多</span></div>
+      </section>
+      <nav id="shelfTabs" class="shelf-tabs" aria-label="书架分类">
+        <button data-view="reading">在读</button>
+        <button class="active" data-view="library">书架</button>
+        <button data-view="finished">已完成</button>
+      </nav>
       <section class="shelf-section" aria-labelledby="shelfTitle">
         <div class="section-heading">
-          <h2 id="shelfTitle">我的书架</h2>
-          <span id="bookCount" class="book-count">0 本</span>
+          <div class="shelf-title-row"><button id="boxBackButton" class="box-back" type="button" aria-label="返回主书架" hidden>←</button><h2 id="shelfTitle">我的书架</h2></div>
+          <div class="section-meta"><span id="bookCount" class="book-count">0 本</span><button id="createBoxButton" class="quiet-button" hidden>＋ 新建书盒</button></div>
         </div>
         <div id="emptyState" class="empty-state">
           <div class="empty-mark">阅</div>
           <h3>书架还是空的</h3>
-          <p>添加一本本地 EPUB，书籍和阅读进度只保存在这台设备上。</p>
-          <label class="secondary-button" for="bookInput">选择 EPUB 文件</label>
+          <p>添加一本本地 EPUB 或 TXT，书籍和阅读进度只保存在这台设备上。</p>
+          <label class="secondary-button" for="bookInput">选择本地文件</label>
         </div>
+        <div id="boxGrid" class="box-grid" hidden></div>
         <div id="bookGrid" class="book-grid"></div>
       </section>
       </main>
@@ -67,12 +94,20 @@
       </aside>
       <section id="readerStage" class="reader-stage" aria-label="电子书正文">
         <button id="prevButton" class="page-zone prev-zone" aria-label="上一页">‹</button>
-        <div id="viewer" class="viewer"><div class="loading">正在打开书页…</div></div>
+        <div id="viewer" class="viewer"></div>
         <button id="nextButton" class="page-zone next-zone" aria-label="下一页">›</button>
       </section>
       <footer class="reader-footer">滚轮、左右方向键或点击两侧翻页</footer>
       </main>
       <div id="toast" class="toast" role="status" aria-live="polite"></div>
+      <dialog id="boxDialog" class="app-dialog">
+        <form method="dialog">
+          <p class="dialog-eyebrow">整理书架</p><h2>移入书盒</h2>
+          <p id="boxDialogBook" class="dialog-copy"></p>
+          <select id="boxSelect" aria-label="选择书盒"></select>
+          <div class="dialog-actions"><button value="cancel" class="quiet-button">取消</button><button id="boxDialogConfirm" value="confirm" class="primary-button">确认</button></div>
+        </form>
+      </dialog>
     </div>
     <script type="module" src="/src/app.js"></script>
   </body>

@@ -1,26 +1,37 @@
 import ePub from "epubjs";
-import { saveBook } from "./db.js";
+import { getBookFile, saveBook, saveBookLocations } from "./book-store.js";
 import { loadPreferences } from "./preferences.js";
 import { applyReaderTheme, setupSettingControls } from "./reader-settings.js";
+import { startReadingTimer, stopReadingTimer } from "./reading-timer.js";
+import { navigatePage } from "./reader-paging.js";
 
 let book;
 let rendition;
 let record;
 let preferences = loadPreferences();
 let lastWheel = 0;
+let paging = false;
 let contentPointerDown = () => {};
+let progressChanged = () => {};
+let generationToken = 0;
 
 const nextFrame = () => new Promise((resolve) => requestAnimationFrame(resolve));
+const byId = (id) => document.querySelector(`#${id}`);
 
 function applyReaderMargin() {
-  document.querySelector("#readerView").style.setProperty("--reader-margin", `${preferences.margin}px`);
+  byId("readerView").style.setProperty("--reader-margin", `${preferences.margin}px`);
 }
 
 const updateTheme = () => applyReaderTheme(rendition, preferences);
 
-function page(direction) {
-  if (!rendition) return;
-  direction === "next" ? rendition.next() : rendition.prev();
+async function page(direction) {
+  if (!rendition || paging) return;
+  paging = true;
+  try {
+    await navigatePage(rendition, direction);
+  } finally {
+    paging = false;
+  }
 }
 
 function onWheel(event) {
@@ -32,7 +43,7 @@ function onWheel(event) {
 }
 
 function onKeydown(event) {
-  if (document.querySelector("#readerView").hidden) return;
+  if (byId("readerView").hidden) return;
   if (event.key === "ArrowRight" || event.key === "ArrowDown") page("next");
   if (event.key === "ArrowLeft" || event.key === "ArrowUp") page("prev");
 }
@@ -42,26 +53,64 @@ async function commitMargin() {
   if (!rendition) return;
   const location = rendition.location?.start?.cfi || record?.location;
   await nextFrame();
-  rendition.resize(undefined, undefined, location);
+  await rendition.resize(undefined, undefined, location);
 }
 
-export function setupReader(onBack, onContentPointerDown) {
-  contentPointerDown = onContentPointerDown;
-  document.querySelector("#prevButton").addEventListener("click", () => page("prev"));
-  document.querySelector("#nextButton").addEventListener("click", () => page("next"));
-  document.querySelector("#readerStage").addEventListener("wheel", onWheel, { passive: false });
-  document.querySelector("#backButton").addEventListener("click", onBack);
+function progressFrom(location) {
+  const mapped = book.locations?.length() ? book.locations.percentageFromCfi(location.start.cfi) : NaN;
+  const fallback = (location.start.index + 1) / Math.max(book.spine.length, 1);
+  return Math.min(1, Math.max(0, Number.isFinite(mapped) ? mapped : fallback));
+}
+
+function loadLocations(fileRecord) {
+  if (fileRecord.locations) {
+    try {
+      book.locations.load(fileRecord.locations);
+      return true;
+    } catch {
+      fileRecord.locations = "";
+    }
+  }
+  return false;
+}
+
+async function generateLocations(openedBook, bookId, token) {
+  await new Promise((resolve) => setTimeout(resolve, 350));
+  if (token !== generationToken) return;
+  await openedBook.locations.generate(1600);
+  await saveBookLocations(bookId, openedBook.locations.save());
+  if (token === generationToken && rendition?.location) onRelocated(rendition.location);
+}
+
+function onRelocated(location) {
+  const progress = progressFrom(location);
+  byId("readerProgress").textContent = `${Math.round(progress * 100)}% · 第 ${location.start.index + 1} / ${book.spine.length} 章`;
+  record = { ...record, location: location.start.cfi, progress, lastRead: Date.now(), updatedAt: Date.now() };
+  saveBook(record);
+  progressChanged(record);
+}
+
+export function setupReader(callbacks) {
+  contentPointerDown = callbacks.onContentPointerDown;
+  progressChanged = callbacks.onProgress;
+  byId("prevButton").addEventListener("click", () => page("prev"));
+  byId("nextButton").addEventListener("click", () => page("next"));
+  byId("readerStage").addEventListener("wheel", onWheel, { passive: false });
+  byId("backButton").addEventListener("click", callbacks.onBack);
   document.addEventListener("keydown", onKeydown);
   setupSettingControls(preferences, { onThemeChange: updateTheme, onMarginInput: applyReaderMargin, onMarginCommit: commitMargin });
 }
 
 export async function openReader(bookRecord) {
   record = bookRecord;
-  document.querySelector("#readerTitle").textContent = record.title;
-  document.querySelector("#viewer").innerHTML = '<div class="loading">正在打开书页…</div>';
-  book = ePub(record.data);
+  byId("readerTitle").textContent = record.title;
+  byId("readerProgress").textContent = "";
+  byId("viewer").replaceChildren();
+  const fileRecord = await getBookFile(record.id);
+  if (!fileRecord?.data) throw new Error("书籍文件不存在");
+  book = ePub(fileRecord.data);
   await book.ready;
-  document.querySelector("#viewer").replaceChildren();
+  const hasLocations = loadLocations(fileRecord);
   applyReaderMargin();
   rendition = book.renderTo("viewer", { width: "100%", height: "100%", flow: "paginated", spread: "auto", minSpreadWidth: 960 });
   rendition.hooks.content.register((contents) => {
@@ -69,19 +118,17 @@ export async function openReader(bookRecord) {
     contents.document.addEventListener("keydown", onKeydown);
     contents.document.addEventListener("pointerdown", contentPointerDown);
   });
-  rendition.on("relocated", async (location) => {
-    const current = location.start.index + 1;
-    const total = book.spine.length;
-    document.querySelector("#readerProgress").textContent = `第 ${current} / ${total} 章`;
-    record = { ...record, location: location.start.cfi, lastRead: Date.now() };
-    await saveBook(record);
-  });
+  rendition.on("relocated", onRelocated);
   updateTheme();
   await nextFrame();
   await rendition.display(record.location || undefined);
+  startReadingTimer();
+  if (!hasLocations) generateLocations(book, record.id, ++generationToken).catch(console.error);
 }
 
-export function closeReader() {
+export async function closeReader() {
+  generationToken += 1;
+  await stopReadingTimer();
   rendition?.destroy();
   book?.destroy();
   rendition = null;

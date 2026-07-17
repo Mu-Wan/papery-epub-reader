@@ -73,5 +73,7 @@
   .settings-panel { top: 68px; right: 10px; width: calc(100vw - 20px); grid-template-columns: 1fr; gap: 14px; }
   .setting-row { grid-column: auto; }
   .page-zone { width: 38px; }
-  .reader-stage { padding: min(var(--reader-margin), 48px); }
+  .reader-stage { padding: min(var(--reader-margin), 24px); }
 }
+
+html:not(.tauri) .settings-panel { top: 42px; }
