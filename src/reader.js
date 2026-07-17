@@ -5,6 +5,7 @@ import { injectReaderFonts } from "./reader-fonts.js";
 import { applyReaderTheme, setupSettingControls } from "./reader-settings.js";
 import { startReadingTimer, stopReadingTimer } from "./reading-timer.js";
 import { navigatePage } from "./reader-paging.js";
+import { bindSwipe } from "./reader-gestures.js";
 
 let book;
 let rendition;
@@ -12,7 +13,6 @@ let record;
 let preferences = loadPreferences();
 let lastWheel = 0;
 let paging = false;
-let contentPointerDown = () => {};
 let progressChanged = () => {};
 let generationToken = 0;
 
@@ -20,7 +20,8 @@ const nextFrame = () => new Promise((resolve) => requestAnimationFrame(resolve))
 const byId = (id) => document.querySelector(`#${id}`);
 
 function applyReaderMargin() {
-  byId("readerView").style.setProperty("--reader-margin", `${preferences.margin}px`);
+  const key = matchMedia("(max-width: 620px)").matches ? "mobileMargin" : "margin";
+  byId("readerView").style.setProperty("--reader-margin", `${preferences[key]}px`);
 }
 
 const updateTheme = () => applyReaderTheme(rendition, preferences);
@@ -59,7 +60,9 @@ async function commitMargin() {
 
 function progressFrom(location) {
   const mapped = book.locations?.length() ? book.locations.percentageFromCfi(location.start.cfi) : NaN;
-  const fallback = (location.start.index + 1) / Math.max(book.spine.length, 1);
+  const displayed = location.start.displayed;
+  const withinChapter = displayed?.total ? displayed.page / displayed.total : 0;
+  const fallback = (location.start.index + withinChapter) / Math.max(book.spine.length, 1);
   return Math.min(1, Math.max(0, Number.isFinite(mapped) ? mapped : fallback));
 }
 
@@ -78,7 +81,13 @@ function loadLocations(fileRecord) {
 async function generateLocations(openedBook, bookId, token) {
   await new Promise((resolve) => setTimeout(resolve, 350));
   if (token !== generationToken) return;
-  await openedBook.locations.generate(1600);
+  try {
+    await openedBook.locations.generate(1600);
+  } catch (error) {
+    if (token === generationToken) throw error;
+    return;
+  }
+  if (token !== generationToken) return;
   await saveBookLocations(bookId, openedBook.locations.save());
   if (token === generationToken && rendition?.location) onRelocated(rendition.location);
 }
@@ -92,11 +101,11 @@ function onRelocated(location) {
 }
 
 export function setupReader(callbacks) {
-  contentPointerDown = callbacks.onContentPointerDown;
   progressChanged = callbacks.onProgress;
   byId("prevButton").addEventListener("click", () => page("prev"));
   byId("nextButton").addEventListener("click", () => page("next"));
   byId("readerStage").addEventListener("wheel", onWheel, { passive: false });
+  bindSwipe(byId("readerStage"), page);
   byId("backButton").addEventListener("click", callbacks.onBack);
   document.addEventListener("keydown", onKeydown);
   setupSettingControls(preferences, { onThemeChange: updateTheme, onMarginInput: applyReaderMargin, onMarginCommit: commitMargin });
@@ -114,11 +123,11 @@ export async function openReader(bookRecord) {
   const hasLocations = loadLocations(fileRecord);
   applyReaderMargin();
   rendition = book.renderTo("viewer", { width: "100%", height: "100%", flow: "paginated", spread: "auto", minSpreadWidth: 960 });
-  rendition.hooks.content.register((contents) => {
-    injectReaderFonts(contents);
+  rendition.hooks.content.register(async (contents) => {
+    await injectReaderFonts(contents);
     contents.document.addEventListener("wheel", onWheel, { passive: false });
     contents.document.addEventListener("keydown", onKeydown);
-    contents.document.addEventListener("pointerdown", contentPointerDown, { capture: true });
+    bindSwipe(contents.document, page);
   });
   rendition.on("relocated", onRelocated);
   updateTheme();

@@ -9,7 +9,7 @@ export const PAPERS = [
 ];
 
 export const FONTS = [
-  { id: "wenkai", label: "霞鹜文楷", family: '"LXGW WenKai Lite", "KaiTi", serif' },
+  { id: "wenkai", label: "霞鹜文楷", family: '"LXGW WenKai", "KaiTi", serif' },
   { id: "song", label: "宋体", family: '"Songti SC", "SimSun", "Noto Serif CJK SC", serif' },
   { id: "yahei", label: "雅黑", family: '"Microsoft YaHei", "PingFang SC", sans-serif' },
   { id: "kai", label: "楷体", family: '"KaiTi", "STKaiti", serif' },
@@ -24,13 +24,14 @@ export const TEXTURES = [
 ];
 
 export function loadPreferences() {
-  const defaults = { fontSize: 18, lineHeight: 1.8, margin: 48, paper: "warm", font: "song", texture: "clean" };
+  const defaults = { fontSize: 18, lineHeight: 1.8, margin: 48, mobileMargin: 20, paper: "warm", font: "song", texture: "clean" };
   try {
     const stored = { ...defaults, ...JSON.parse(localStorage.getItem(KEY)) };
     return {
       fontSize: clamp(stored.fontSize, 14, 28),
       lineHeight: clamp(stored.lineHeight, 1.3, 2.4),
       margin: clamp(stored.margin, 16, 96),
+      mobileMargin: clamp(stored.mobileMargin, 8, 48),
       paper: PAPERS.some((paper) => paper.id === stored.paper) ? stored.paper : defaults.paper,
       font: FONTS.some((font) => font.id === stored.font) ? stored.font : defaults.font,
       texture: TEXTURES.some((texture) => texture.id === stored.texture) ? stored.texture : defaults.texture,

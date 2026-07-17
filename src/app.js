@@ -3,11 +3,12 @@ import { deleteBox, listBoxes, saveBox } from "./box-store.js";
 import { renderHeatmap } from "./heatmap.js";
 import { renderLibrary } from "./library.js";
 import { closeReader, openReader, setupReader } from "./reader.js";
+import { enterReaderHistory, leaveReaderHistory, setupReaderHistory } from "./reader-history.js";
 import { openBoxDialog, setupShelfControls } from "./shelf-controls.js";
 import { setupPwaInstall } from "./pwa-install.js";
-import { requestPersistentStorage } from "./storage.js";
+import { setupPwaUpdates } from "./pwa-update.js";
+import { setupPersistentStorage } from "./storage.js";
 import { setupWindowControls } from "./window-controls.js";
-
 const byId = (id) => document.querySelector(`#${id}`);
 const libraryView = byId("libraryView");
 const readerView = byId("readerView");
@@ -15,9 +16,9 @@ const settingsPanel = byId("settingsPanel");
 const state = { books: [], boxes: [], view: "library", boxId: null };
 let toastTimer;
 let shelfTransition;
-
 function setSettingsOpen(open) {
   settingsPanel.hidden = !open;
+  byId("settingsBackdrop").hidden = !open;
   byId("settingsButton").setAttribute("aria-expanded", String(open));
 }
 
@@ -56,12 +57,13 @@ async function showReader(book) {
   const activeBook = book.status === "unread" ? await updateBook(book.id, { status: "reading" }) : book;
   libraryView.hidden = true;
   readerView.hidden = false;
+  enterReaderHistory();
   try {
     await openReader(activeBook);
   } catch (error) {
     console.error(error);
     toast("这本书暂时无法打开");
-    await showLibrary();
+    leaveReaderHistory();
   }
 }
 
@@ -135,14 +137,13 @@ const callbacks = {
 };
 
 byId("settingsButton").addEventListener("click", () => setSettingsOpen(settingsPanel.hidden));
-document.addEventListener("pointerdown", (event) => {
-  if (!settingsPanel.hidden && !settingsPanel.contains(event.target) && !byId("settingsButton").contains(event.target)) setSettingsOpen(false);
-});
+byId("settingsBackdrop").addEventListener("click", () => setSettingsOpen(false));
 document.addEventListener("keydown", (event) => { if (event.key === "Escape") setSettingsOpen(false); });
 
-setupReader({ onBack: showLibrary, onContentPointerDown: () => setSettingsOpen(false), onProgress });
-setupShelfControls({ state, refresh, render: transitionShelf, toast });
+setupReaderHistory(showLibrary);
+setupReader({ onBack: leaveReaderHistory, onProgress });
+setupShelfControls({ state, refresh, render: transitionShelf, toast, ensureStorage: setupPersistentStorage(toast) });
 setupWindowControls();
 setupPwaInstall({ toast });
-requestPersistentStorage(toast);
+setupPwaUpdates(toast);
 refresh();

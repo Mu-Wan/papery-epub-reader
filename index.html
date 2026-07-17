@@ -102,12 +102,13 @@
         <div class="setting-row"><span>纸色</span><div id="paperChoices" class="paper-choices"></div></div>
         <div class="setting-row"><span>纸质</span><div id="textureChoices" class="texture-choices"></div></div>
       </aside>
+      <button id="settingsBackdrop" class="settings-backdrop" type="button" aria-label="关闭排版设置" hidden></button>
       <section id="readerStage" class="reader-stage" aria-label="电子书正文">
         <button id="prevButton" class="page-zone prev-zone" aria-label="上一页">‹</button>
         <div id="viewer" class="viewer"></div>
         <button id="nextButton" class="page-zone next-zone" aria-label="下一页">›</button>
       </section>
-      <footer class="reader-footer">滚轮、左右方向键或点击两侧翻页</footer>
+      <footer class="reader-footer"><span class="desktop-hint">滚轮、左右方向键或点击两侧翻页</span><span class="mobile-hint">左右滑动或点击两侧翻页</span></footer>
       </main>
       <div id="toast" class="toast" role="status" aria-live="polite"></div>
       <dialog id="boxDialog" class="app-dialog">

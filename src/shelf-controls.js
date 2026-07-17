@@ -18,8 +18,9 @@ export function openBoxDialog(book, boxes, toast) {
   byId("boxDialog").showModal();
 }
 
-async function importBooks(event, refresh, toast, state) {
+async function importBooks(event, refresh, toast, state, ensureStorage) {
   const files = [...event.target.files];
+  if (files.length) await ensureStorage();
   for (const file of files) {
     try {
       toast(`正在添加《${file.name}》`);
@@ -55,13 +56,13 @@ async function restoreBackup(event, refresh, toast) {
   }
 }
 
-export function setupShelfControls({ state, refresh, render, toast }) {
+export function setupShelfControls({ state, refresh, render, toast, ensureStorage }) {
   byId("boxBackButton").addEventListener("click", () => {
     state.view = "library";
     state.boxId = null;
     render();
   });
-  byId("bookInput").addEventListener("change", (event) => importBooks(event, refresh, toast, state));
+  byId("bookInput").addEventListener("change", (event) => importBooks(event, refresh, toast, state, ensureStorage));
   byId("shelfTabs").addEventListener("click", (event) => {
     const view = event.target.dataset.view;
     if (!view) return;

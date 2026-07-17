@@ -1,10 +1,11 @@
 import { openDatabase, STORES } from "./db.js";
+import { listReadingDays, replaceReadingMirror } from "./stats-store.js";
 
 const names = Object.values(STORES);
 
 export async function readSnapshot() {
   const database = await openDatabase();
-  return new Promise((resolve, reject) => {
+  const result = await new Promise((resolve, reject) => {
     const transaction = database.transaction(names, "readonly");
     const result = {};
     names.forEach((name) => {
@@ -17,6 +18,8 @@ export async function readSnapshot() {
     };
     transaction.onerror = () => reject(transaction.error);
   });
+  result.readingDays = await listReadingDays();
+  return result;
 }
 
 function newer(local, incoming) {
@@ -46,7 +49,7 @@ function mergedSnapshot(local, incoming) {
 export async function restoreSnapshot(incoming, overwrite = false) {
   const snapshot = overwrite ? incoming : mergedSnapshot(await readSnapshot(), incoming);
   const database = await openDatabase();
-  return new Promise((resolve, reject) => {
+  await new Promise((resolve, reject) => {
     const transaction = database.transaction(names, "readwrite");
     const source = { books: snapshot.books, bookFiles: snapshot.bookFiles, boxes: snapshot.boxes, readingDays: snapshot.readingDays };
     names.forEach((name) => {
@@ -60,4 +63,5 @@ export async function restoreSnapshot(incoming, overwrite = false) {
     };
     transaction.onerror = () => reject(transaction.error);
   });
+  replaceReadingMirror(snapshot.readingDays);
 }

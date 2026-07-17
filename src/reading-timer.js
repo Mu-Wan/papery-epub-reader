@@ -1,4 +1,4 @@
-import { addReadingTime } from "./stats-store.js";
+import { stageReadingTime, syncReadingTime } from "./stats-store.js";
 
 let bookOpen = false;
 let lastWall = 0;
@@ -26,8 +26,9 @@ function saveRange(start, end) {
     parts.push([dateKey(cursor), boundary - cursor]);
     cursor = boundary;
   }
+  parts.forEach(([date, milliseconds]) => stageReadingTime(date, milliseconds));
   pending = pending.then(async () => {
-    for (const [date, milliseconds] of parts) await addReadingTime(date, milliseconds);
+    for (const [date] of parts) await syncReadingTime(date);
   });
   return pending;
 }
