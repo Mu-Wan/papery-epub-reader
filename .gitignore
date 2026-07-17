@@ -3,4 +3,5 @@ dist/
 .playwright-cli/
 output/
 release/
+tmp/
 src-tauri/target/

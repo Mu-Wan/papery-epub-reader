@@ -1,0 +1,9 @@
+.app-dialog { width: min(420px, calc(100vw - 32px)); padding: 0; border: 1px solid #ffffffa3; border-radius: 24px; background: #f8f7f3ed; box-shadow: 0 30px 90px #1c1d1a3d; backdrop-filter: blur(22px); }
+.app-dialog::backdrop { background: #22231f4d; backdrop-filter: blur(4px); }
+.app-dialog form { display: grid; gap: 16px; padding: 28px; }
+.dialog-eyebrow { margin: 0 0 -9px; color: #315c4c; font-size: 11px; font-weight: 800; letter-spacing: .13em; }
+.app-dialog h2, .dialog-copy { margin: 0; }
+.dialog-copy { overflow: hidden; color: #72736d; text-overflow: ellipsis; white-space: nowrap; }
+.app-dialog select { width: 100%; min-height: 44px; padding: 0 12px; border: 1px solid #cccbc4; border-radius: 12px; color: #30312e; background: #fff; }
+.dialog-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 7px; }
+.dialog-actions .primary-button { min-height: 38px; padding: 0 16px; }

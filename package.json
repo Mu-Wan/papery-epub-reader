@@ -1,23 +1,26 @@
 {
   "name": "papery-epub-reader",
   "private": true,
-  "version": "1.0.5",
+  "version": "1.1.0",
   "description": "轻量本地 EPUB 阅读器",
   "type": "module",
   "scripts": {
     "dev": "vite --host 127.0.0.1",
     "build": "vite build",
+    "build:web": "vite build --mode web",
     "preview": "vite preview --host 127.0.0.1",
     "tauri": "tauri",
     "package:tauri": "tauri build --no-bundle && node scripts/copy_release.mjs"
   },
   "dependencies": {
     "@tauri-apps/api": "^2.11.1",
-    "epubjs": "^0.3.93"
+    "epubjs": "^0.3.93",
+    "jszip": "^3.10.1"
   },
   "devDependencies": {
     "@tauri-apps/cli": "^2.11.4",
-    "vite": "^8.1.5"
+    "vite": "^8.1.5",
+    "vite-plugin-pwa": "^1.3.0"
   },
   "overrides": {
     "@xmldom/xmldom": "^0.9.10"

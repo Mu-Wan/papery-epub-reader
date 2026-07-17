@@ -41,9 +41,8 @@
   margin-left: auto;
 }
 
-html:not(.tauri) .window-controls {
-  visibility: hidden;
-}
+html:not(.tauri) .app-titlebar { display: none; }
+html:not(.tauri) .app-shell { height: 100vh; }
 
 .window-controls button {
   position: relative;

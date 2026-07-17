@@ -20,6 +20,7 @@ export function applyReaderTheme(rendition, preferences) {
       "background-size": `${texture.size} !important`,
       margin: "0 !important",
     },
+    body: { position: "relative !important", "min-height": "100% !important" },
     html: { "padding-top": "0 !important", "padding-bottom": "0 !important" },
     "body, body *": { "font-family": `${font.family} !important` },
     p: { "line-height": `${preferences.lineHeight} !important` },
