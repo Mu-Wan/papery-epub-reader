@@ -4,7 +4,14 @@
 .dialog-eyebrow { margin: 0 0 -9px; color: #315c4c; font-size: 11px; font-weight: 800; letter-spacing: .13em; }
 .app-dialog h2, .dialog-copy { margin: 0; }
 .dialog-copy { overflow: hidden; color: #72736d; text-overflow: ellipsis; white-space: nowrap; }
-.app-dialog select { width: 100%; min-height: 44px; padding: 0 12px; border: 1px solid #cccbc4; border-radius: 12px; color: #30312e; background: #fff; }
+.dialog-message { margin: -4px 0 0; color: #666862; line-height: 1.65; }
+.dialog-input { width: 100%; height: 46px; padding: 0 14px; border: 1px solid #c8c8c1; border-radius: 13px; color: #30312e; background: #fffffff0; box-shadow: inset 0 1px 3px #292a2708; }
+.dialog-input:focus { border-color: #668477; outline: 3px solid #6684771f; }
+.dialog-choice-list { display: grid; max-height: min(330px, 48dvh); gap: 7px; overflow-y: auto; overscroll-behavior: contain; }
+.dialog-choice { display: flex; min-height: 46px; align-items: center; justify-content: space-between; padding: 0 14px; border: 1px solid #d6d5ce; border-radius: 13px; color: #343632; background: #ffffffb3; cursor: pointer; text-align: left; }
+.dialog-choice:hover, .dialog-choice:focus-visible { border-color: #8ca095; color: #294c3f; background: #fff; }
+.dialog-choice i { color: #718078; font-style: normal; }
+.danger-action { border-color: #9d4c43; background: #9d4c43; }
 .dialog-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 7px; }
 .dialog-actions .primary-button { min-height: 38px; padding: 0 16px; }
 .install-help-dialog form { grid-template-columns: 48px minmax(0, 1fr); align-items: center; }
