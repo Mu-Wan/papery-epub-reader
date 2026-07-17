@@ -9,8 +9,9 @@ test("手机长按可把书拖入书盒", async ({ page }) => {
     mimeType: "text/plain",
     buffer: Buffer.from("第一章\n手机长按拖动测试"),
   });
-  page.once("dialog", (dialog) => dialog.accept("旅行随笔"));
   await page.locator("#createBoxButton").click();
+  await page.locator(".dialog-input").fill("旅行随笔");
+  await page.getByRole("button", { name: "创建" }).click();
   await expect(page.locator(".book-card")).toHaveCount(1);
 
   await page.evaluate(() => {

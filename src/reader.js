@@ -8,6 +8,8 @@ import { navigatePage } from "./reader-paging.js";
 import { bindSwipe } from "./reader-gestures.js";
 import { createMarginController } from "./reader-margin.js";
 import { setupTocPanel } from "./toc-panel.js";
+import { updatePageNumber } from "./reader-page.js";
+import { setupImmersiveMode } from "./reader-immersive.js";
 
 let book;
 let rendition;
@@ -22,6 +24,7 @@ const nextFrame = () => new Promise((resolve) => requestAnimationFrame(resolve))
 const byId = (id) => document.querySelector(`#${id}`);
 const margins = createMarginController(preferences, () => rendition, () => rendition?.location?.start?.cfi || record?.location);
 const renderToc = setupTocPanel((href) => rendition?.display(href));
+const resetImmersive = setupImmersiveMode(() => rendition);
 
 const updateTheme = () => applyReaderTheme(rendition, preferences);
 
@@ -85,6 +88,7 @@ async function generateLocations(openedBook, bookId, token) {
 
 function onRelocated(location) {
   const progress = progressFrom(location);
+  updatePageNumber(location);
   byId("readerProgress").textContent = `${Math.round(progress * 100)}% · 第 ${location.start.index + 1} / ${book.spine.length} 章`;
   record = { ...record, location: location.start.cfi, progress, lastRead: Date.now(), updatedAt: Date.now() };
   saveBook(record);
@@ -106,9 +110,11 @@ export function setupReader(callbacks) {
 }
 
 export async function openReader(bookRecord) {
+  resetImmersive();
   record = bookRecord;
   byId("readerTitle").textContent = record.title;
   byId("readerProgress").textContent = "";
+  byId("readerPage").textContent = "";
   byId("viewer").replaceChildren();
   const fileRecord = await getBookFile(record.id);
   if (!fileRecord?.data) throw new Error("书籍文件不存在");

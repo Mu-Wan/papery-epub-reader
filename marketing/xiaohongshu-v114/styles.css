@@ -1,0 +1,42 @@
+:root { font-family: "Microsoft YaHei UI", "PingFang SC", sans-serif; color: #20231f; background: #e9e7e1; font-synthesis: none; }
+* { box-sizing: border-box; }
+html, body, #app { width: 1080px; height: 1440px; margin: 0; overflow: hidden; }
+.card { position: relative; width: 1080px; height: 1440px; padding: 64px 72px 58px; overflow: hidden; background: #f5f3ed; }
+.card::before { position: absolute; inset: 0; border: 18px solid #ebe8df; content: ""; pointer-events: none; }
+header, footer { position: relative; z-index: 3; display: flex; align-items: center; justify-content: space-between; color: #74766f; font-size: 20px; letter-spacing: .05em; }
+.brand { display: flex; align-items: center; gap: 14px; color: #1e211e; font-size: 25px; letter-spacing: .12em; }
+.brand img { width: 40px; height: 40px; }
+.copy { position: relative; z-index: 2; width: 850px; margin-top: 96px; }
+.copy > p { margin: 0 0 26px; color: #315f4e; font-size: 24px; font-weight: 800; letter-spacing: .12em; }
+h1 { margin: 0; font-family: Georgia, "Songti SC", serif; font-size: 74px; line-height: 1.14; letter-spacing: -.035em; }
+h1 em { color: #315f4e; font-style: normal; }
+h2 { margin: 34px 0 0; color: #696c65; font-size: 26px; font-weight: 500; line-height: 1.65; }
+.tags { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 34px; }
+.tags span { padding: 11px 19px; border: 1px solid #a9ada6; border-radius: 999px; color: #41453f; font-size: 20px; font-weight: 650; }
+.shot { position: absolute; z-index: 1; overflow: hidden; border: 1px solid #c9c7c0; background: #fff; box-shadow: 0 28px 70px #34372f24; }
+.shot img { width: 100%; height: 100%; object-fit: cover; object-position: top; }
+.desktop { right: -92px; bottom: 126px; width: 940px; height: 668px; border-radius: 18px; transform: rotate(-1.5deg); }
+.phone { right: 64px; bottom: -150px; width: 460px; height: 1004px; border: 12px solid #191b19; border-radius: 58px; }
+.phone-crop { right: 70px; bottom: 80px; width: 470px; height: 840px; border: 10px solid #1b1c1a; border-radius: 54px; }
+.screen .copy { margin-top: 76px; }
+.screen h1 { font-size: 64px; }
+.screen .shot { right: 64px; bottom: 128px; width: 952px; height: 675px; transform: none; }
+.phone-card .copy { width: 515px; margin-top: 110px; }
+.phone-card h1 { font-size: 66px; }
+.phone-card h2 { font-size: 25px; }
+.phone-card .phone, .phone-card .phone-crop { right: 52px; }
+.cover .copy { width: 800px; margin-top: 70px; }
+.cover h1 { font-size: 76px; }
+.cover .desktop { right: -260px; bottom: -26px; width: 980px; height: 698px; opacity: .98; }
+.phone-cover .copy { width: 570px; }
+.phone-cover .phone { right: 36px; bottom: -210px; width: 440px; height: 960px; }
+.closing { background: #eef0eb; }
+.closing .copy { width: 900px; margin-top: 190px; }
+.closing h1 { font-size: 78px; }
+.download .copy { margin-top: 150px; }
+.download h1 { font-size: 68px; }
+.download h2 { color: #252824; font-size: 31px; line-height: 1.75; }
+.download h2 b { color: #315f4e; font-size: 23px; letter-spacing: .1em; }
+aside { position: absolute; z-index: 2; left: 72px; bottom: 130px; max-width: 820px; padding-left: 18px; border-left: 4px solid #315f4e; color: #676a63; font-size: 20px; line-height: 1.6; }
+footer { position: absolute; right: 72px; bottom: 54px; left: 72px; }
+footer b { color: #315f4e; font-variant-numeric: tabular-nums; }

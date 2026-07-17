@@ -2,20 +2,25 @@ import { exportBackup, importBackup } from "./backup.js";
 import { updateBook } from "./book-store.js";
 import { createBox } from "./box-store.js";
 import { importBook } from "./importer.js";
+import { askChoice, askConfirm, askText } from "./app-dialogs.js";
 
 const byId = (id) => document.querySelector(`#${id}`);
-let pendingBoxBook = null;
 let restoreMode = "merge";
 
-export function openBoxDialog(book, boxes, toast) {
+export async function openBoxDialog(book, boxes, toast) {
   if (!boxes.length) {
     toast("请先在“书盒”中新建一个书盒");
-    return;
+    return false;
   }
-  pendingBoxBook = book;
-  byId("boxDialogBook").textContent = `《${book.title}》`;
-  byId("boxSelect").replaceChildren(...boxes.map((box) => new Option(box.name, box.id)));
-  byId("boxDialog").showModal();
+  const boxId = await askChoice({
+    title: "移入书盒",
+    message: `《${book.title}》`,
+    options: boxes.map((box) => ({ label: box.name, value: box.id })),
+  });
+  if (!boxId) return false;
+  await updateBook(book.id, { boxId });
+  toast("已移入书盒");
+  return true;
 }
 
 async function importBooks(event, refresh, toast, state, ensureStorage) {
@@ -44,7 +49,7 @@ async function restoreBackup(event, refresh, toast) {
   event.target.value = "";
   if (!file) return;
   const overwrite = restoreMode === "overwrite";
-  if (overwrite && !confirm("覆盖恢复会清空当前书架，再写入备份。确定继续吗？")) return;
+  if (overwrite && !await askConfirm({ title: "覆盖当前书架？", message: "当前书架会先清空，再写入这份备份。", confirmLabel: "覆盖恢复", danger: true })) return;
   try {
     toast(overwrite ? "正在覆盖恢复…" : "正在合并备份…");
     await importBackup(file, overwrite);
@@ -71,16 +76,9 @@ export function setupShelfControls({ state, refresh, render, toast, ensureStorag
     render();
   });
   byId("createBoxButton").addEventListener("click", async () => {
-    const name = prompt("给书盒取个名字")?.trim();
+    const name = await askText({ title: "新建书盒", placeholder: "例如：文学与随笔", confirmLabel: "创建" });
     if (!name) return;
     await createBox(name);
-    await refresh();
-  });
-  byId("boxDialog").addEventListener("close", async (event) => {
-    if (event.target.returnValue !== "confirm" || !pendingBoxBook) return;
-    await updateBook(pendingBoxBook.id, { boxId: byId("boxSelect").value });
-    pendingBoxBook = null;
-    toast("已移入书盒");
     await refresh();
   });
   byId("exportButton").addEventListener("click", async () => {

@@ -64,7 +64,8 @@
 .box-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(310px, 1fr)); gap: 20px; padding-top: 28px; }
 .box-card { position: relative; display: flex; min-height: 164px; align-items: center; justify-content: space-between; padding: 18px 16px 15px 20px; overflow: hidden; border: 1px solid #d6d4cd; border-radius: 24px; background: radial-gradient(circle at 25% 8%, #fff 0, transparent 42%), linear-gradient(145deg, #fdfcf9e8, #eeece6c7); box-shadow: 0 16px 42px #34342f12, inset 0 1px #fff; transition: border-color .2s, box-shadow .2s, transform .2s; }
 .box-card::after { position: absolute; inset: auto 18px 0; height: 1px; content: ""; background: linear-gradient(90deg, transparent, #83928842, transparent); }
-.box-card:hover { border-color: #bfc3bd; box-shadow: 0 22px 50px #292a271c, inset 0 1px #fff; transform: translateY(-2px); }
+.box-card:hover { border-color: #bfc3bd; box-shadow: 0 22px 50px #292a271c, inset 0 1px #fff; }
+.box-card.menu-owner-open, .box-card.menu-owner-open:hover { overflow: visible; }
 .box-open { display: flex; min-width: 0; flex: 1; align-items: center; gap: 19px; padding: 0; border: 0; background: transparent; cursor: pointer; text-align: left; }
 .box-copy { display: grid; min-width: 0; gap: 6px; }
 .box-open strong { overflow: hidden; color: #292b28; font-family: Georgia, "Songti SC", serif; font-size: 18px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
@@ -111,4 +112,15 @@
   .library-brand { gap: 7px; }
   .library-brand-mark { width: 28px; height: 28px; }
   .mobile-brand-note { display: none; }
+}
+
+@media (max-width: 620px) {
+  .book-cover { border-radius: 3px 9px 9px 3px; }
+  .book-progress { gap: 4px; margin-top: 7px; }
+  .book-progress output { font-size: 9px; }
+  .format-badge { right: 6px; bottom: 6px; padding: 3px 5px; font-size: 8px; }
+  .book-menu { top: 5px; }
+  .book-menu summary { width: 24px; height: 24px; font-size: 18px; }
+  .book-menu > div { width: 152px; }
+  .book-menu button { min-height: 44px; padding: 10px 12px; font-size: 14px; }
 }

@@ -1,5 +1,4 @@
 import { test, expect } from "@playwright/test";
-
 const url = "http://127.0.0.1:5173";
 
 test.use({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
@@ -51,10 +50,25 @@ test("手机端阅读流程与持久统计", async ({ page }) => {
   const text = Array.from({ length: 80 }, (_, index) => `第${index + 1}段 这是手机端翻页与字体测试。霞鹜文楷应该完整、统一、清晰地显示中文内容。`).join("\n\n");
   await page.locator("#bookInput").setInputFiles({ name: "手机测试.txt", mimeType: "text/plain", buffer: Buffer.from(text) });
   await expect(page.locator(".book-card")).toHaveCount(1);
+  await page.locator(".book-menu summary").click();
+  const menuTouchTarget = await page.locator(".book-menu button").first().evaluate((button) => {
+    const style = getComputedStyle(button);
+    return { height: button.getBoundingClientRect().height, fontSize: parseFloat(style.fontSize) };
+  });
+  expect(menuTouchTarget.height).toBeGreaterThanOrEqual(44);
+  expect(menuTouchTarget.fontSize).toBeGreaterThanOrEqual(14);
+  await page.locator(".book-menu summary").click();
   await page.locator(".book-card").click();
   await expect(page.locator("#readerView")).toBeVisible();
   await expect(page.locator("#viewer iframe")).toHaveCount(1);
-
+  await expect(page.locator("#readerPage")).toHaveText(/\d+(?:–\d+)? \/ \d+/);
+  await page.locator("#immersiveButton").click();
+  await expect(page.locator("#readerView")).toHaveClass(/immersive/);
+  await expect(page.locator(".reader-hint")).toBeHidden();
+  await expect(page.locator("#readerPage")).toBeVisible();
+  await page.goBack();
+  await expect(page.locator("#readerView")).toBeVisible();
+  await expect(page.locator("#readerView")).not.toHaveClass(/immersive/);
   await page.locator("#settingsButton").click();
   await expect(page.locator("#settingsPanel")).toBeVisible();
   await page.locator(".settings-controls").evaluate((panel) => { panel.scrollTop = 60; });
@@ -121,6 +135,8 @@ test("手机端阅读流程与持久统计", async ({ page }) => {
     pointer("pointerup", 100);
   });
   await expect.poll(readLocation).not.toBe(afterHorizontal);
+  const finishDialog = page.locator(".action-dialog");
+  if (await finishDialog.isVisible()) await finishDialog.getByRole("button", { name: "取消" }).click();
   await page.locator("#tocButton").click();
   await expect(page.locator("#tocList button")).not.toHaveCount(0);
   await page.locator("#tocPanel").click({ position: { x: 4, y: 4 } });

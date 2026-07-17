@@ -8,8 +8,9 @@ test("拖动排序并放入书盒", async ({ page }) => {
   ]);
   await expect(page.locator(".book-card")).toHaveCount(2);
 
-  page.once("dialog", (dialog) => dialog.accept("拖动书盒"));
   await page.locator("#createBoxButton").click();
+  await page.locator(".dialog-input").fill("拖动书盒");
+  await page.getByRole("button", { name: "创建" }).click();
   await expect(page.locator(".box-card")).toHaveCount(1);
 
   await page.locator(".book-card").first().dragTo(page.locator(".box-card"));

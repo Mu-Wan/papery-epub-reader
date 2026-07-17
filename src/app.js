@@ -12,6 +12,7 @@ import { setupWindowControls } from "./window-controls.js";
 import { setupSettingsDialog } from "./settings-dialog.js";
 import { setupDismissiblePopovers } from "./dismiss-popovers.js";
 import { moveBookToBox, reorderBooks } from "./book-order.js";
+import { askConfirm, askText } from "./app-dialogs.js";
 const byId = (id) => document.querySelector(`#${id}`);
 const libraryView = byId("libraryView");
 const readerView = byId("readerView");
@@ -19,6 +20,7 @@ const state = { books: [], boxes: [], view: "library", boxId: null };
 let toastTimer;
 let shelfTransition;
 const closeSettings = setupSettingsDialog();
+
 function toast(message) {
   const element = byId("toast");
   element.textContent = message;
@@ -26,13 +28,11 @@ function toast(message) {
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => element.classList.remove("show"), 4200);
 }
-
 async function refresh() {
   [state.books, state.boxes] = await Promise.all([listBooks(), listBoxes()]);
   renderLibrary(state, callbacks);
   await renderHeatmap();
 }
-
 function transitionShelf() {
   const render = () => renderLibrary(state, callbacks);
   if (!document.startViewTransition || matchMedia("(prefers-reduced-motion: reduce)").matches) return render();
@@ -40,7 +40,6 @@ function transitionShelf() {
   shelfTransition = document.startViewTransition(render);
   return shelfTransition.finished.catch(() => {});
 }
-
 async function preloadBoxCovers(box) {
   const covers = state.books.filter((book) => book.boxId === box.id && book.cover).map((book) => book.cover);
   await Promise.all(covers.map(async (source) => {
@@ -49,7 +48,6 @@ async function preloadBoxCovers(box) {
     try { await image.decode(); } catch { /* 封面解码失败时仍允许进入书盒。 */ }
   }));
 }
-
 async function showReader(book) {
   const activeBook = book.status === "unread" ? await updateBook(book.id, { status: "reading" }) : book;
   libraryView.hidden = true;
@@ -63,7 +61,6 @@ async function showReader(book) {
     leaveReaderHistory();
   }
 }
-
 async function showLibrary() {
   await closeReader();
   closeSettings();
@@ -86,13 +83,16 @@ async function setBookStatus(book, status) {
 
 async function onBookAction(action, book) {
   if (action === "open") return showReader(book);
-  if (action === "box") return openBoxDialog(book, state.boxes, toast);
+  if (action === "box") {
+    if (await openBoxDialog(book, state.boxes, toast)) await refresh();
+    return;
+  }
   if (action === "unbox") await updateBook(book.id, { boxId: null });
   if (["finish", "reading", "unread"].includes(action)) {
     return setBookStatus(book, action === "finish" ? "finished" : action);
   }
   if (action === "delete") {
-    if (!confirm(`从书架删除《${book.title}》？`)) return;
+    if (!await askConfirm({ title: "删除这本书？", message: `《${book.title}》将从本机书架移除。`, confirmLabel: "删除", danger: true })) return;
     await deleteBook(book.id);
     toast("已从书架删除");
   }
@@ -101,12 +101,12 @@ async function onBookAction(action, book) {
 
 async function onBoxAction(action, box) {
   if (action === "rename") {
-    const name = prompt("书盒的新名字", box.name)?.trim();
+    const name = await askText({ title: "重命名书盒", value: box.name, confirmLabel: "保存" });
     if (!name) return;
     await saveBox({ ...box, name, updatedAt: Date.now() });
   }
   if (action === "delete") {
-    if (!confirm(`删除书盒“${box.name}”？书籍会回到主书架。`)) return;
+    if (!await askConfirm({ title: `删除“${box.name}”？`, message: "书盒中的书会回到主书架，不会删除书籍。", confirmLabel: "删除", danger: true })) return;
     await deleteBox(box.id);
   }
   await refresh();
@@ -118,7 +118,7 @@ async function onProgress(book) {
   if (book.progress < 0.98 || book.finishPrompted || book.status === "finished") return;
   book.finishPrompted = true;
   await updateBook(book.id, { finishPrompted: true });
-  if (confirm("已经读到末尾，要标记为已读完吗？")) await updateBook(book.id, { status: "finished", finishedAt: Date.now() });
+  if (await askConfirm({ title: "读完这本书了？", message: "可以稍后在“已完成”里找到它。", confirmLabel: "标记读完" })) await updateBook(book.id, { status: "finished", finishedAt: Date.now() });
 }
 
 const callbacks = {

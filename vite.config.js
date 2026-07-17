@@ -7,11 +7,11 @@ export default defineConfig(({ mode }) => {
     base: web ? "/papery-epub-reader/" : "./",
     plugins: [VitePWA({
       disable: !web,
-      registerType: "prompt",
+      registerType: "autoUpdate",
       injectRegister: null,
       includeAssets: ["app-mark.svg", "pwa-192.png", "pwa-512.png", "pwa-maskable-512.png"],
       manifest: {
-        name: "页间 · 本地阅读器",
+        name: "页间",
         short_name: "页间",
         description: "安静、轻巧、本地优先的 EPUB 与 TXT 阅读器",
         lang: "zh-CN",
@@ -30,9 +30,19 @@ export default defineConfig(({ mode }) => {
       },
       workbox: {
         globPatterns: ["**/*.{js,css,html,svg,png,ico,woff2,txt}"],
+        navigateFallback: null,
         cleanupOutdatedCaches: true,
         skipWaiting: true,
         clientsClaim: true,
+        runtimeCaching: [{
+          urlPattern: ({ request }) => request.mode === "navigate",
+          handler: "NetworkFirst",
+          options: {
+            cacheName: "页间-页面",
+            networkTimeoutSeconds: 4,
+            precacheFallback: { fallbackURL: "index.html" },
+          },
+        }],
       },
     })],
     build: { chunkSizeWarningLimit: 650 },

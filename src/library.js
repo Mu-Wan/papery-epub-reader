@@ -3,6 +3,18 @@ import { setupBookDrag } from "./book-drag.js";
 
 const byId = (id) => document.querySelector(`#${id}`);
 
+function boxAction(label, action, box, details, callback) {
+  const button = document.createElement("button");
+  button.type = "button";
+  button.textContent = label;
+  button.addEventListener("click", (event) => {
+    event.stopPropagation();
+    details.removeAttribute("open");
+    callback(action, box);
+  });
+  return button;
+}
+
 function createBoxCard(box, books, callbacks) {
   const card = document.createElement("article");
   card.className = "box-card";
@@ -30,13 +42,10 @@ function createBoxCard(box, books, callbacks) {
   summary.setAttribute("aria-label", `管理书盒“${box.name}”`);
   summary.textContent = "•••";
   const actions = document.createElement("div");
-  const rename = document.createElement("button");
-  rename.textContent = "重命名";
-  rename.addEventListener("click", () => callbacks.onBoxAction("rename", box));
-  const remove = document.createElement("button");
-  remove.textContent = "删除";
-  remove.addEventListener("click", () => callbacks.onBoxAction("delete", box));
-  actions.append(rename, remove);
+  actions.append(
+    boxAction("重命名", "rename", box, menu, callbacks.onBoxAction),
+    boxAction("删除", "delete", box, menu, callbacks.onBoxAction),
+  );
   menu.append(summary, actions);
   card.append(open, menu);
   open.addEventListener("click", () => callbacks.onOpenBox(box));
