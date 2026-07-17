@@ -4,6 +4,7 @@ import { renderHeatmap } from "./heatmap.js";
 import { renderLibrary } from "./library.js";
 import { closeReader, openReader, setupReader } from "./reader.js";
 import { openBoxDialog, setupShelfControls } from "./shelf-controls.js";
+import { setupPwaInstall } from "./pwa-install.js";
 import { requestPersistentStorage } from "./storage.js";
 import { setupWindowControls } from "./window-controls.js";
 
@@ -72,13 +73,15 @@ async function showLibrary() {
   await refresh();
 }
 
-async function setBookStatus(book, finished) {
+async function setBookStatus(book, status) {
+  const finished = status === "finished";
   await updateBook(book.id, {
-    status: finished ? "finished" : "reading",
+    status,
     finishedAt: finished ? Date.now() : null,
     finishPrompted: finished || book.finishPrompted,
   });
-  toast(finished ? "已放入已读完" : "已移回在读");
+  const messages = { finished: "已放入已读完", reading: "已移回在读", unread: "已取消在读" };
+  toast(messages[status]);
   await refresh();
 }
 
@@ -86,8 +89,9 @@ async function onBookAction(action, book) {
   if (action === "open") return showReader(book);
   if (action === "box") return openBoxDialog(book, state.boxes, toast);
   if (action === "unbox") await updateBook(book.id, { boxId: null });
-  if (action === "finish") return setBookStatus(book, true);
-  if (action === "reading") return setBookStatus(book, false);
+  if (["finish", "reading", "unread"].includes(action)) {
+    return setBookStatus(book, action === "finish" ? "finished" : action);
+  }
   if (action === "delete") {
     if (!confirm(`从书架删除《${book.title}》？`)) return;
     await deleteBook(book.id);
@@ -139,5 +143,6 @@ document.addEventListener("keydown", (event) => { if (event.key === "Escape") se
 setupReader({ onBack: showLibrary, onContentPointerDown: () => setSettingsOpen(false), onProgress });
 setupShelfControls({ state, refresh, render: transitionShelf, toast });
 setupWindowControls();
+setupPwaInstall({ toast });
 requestPersistentStorage(toast);
 refresh();

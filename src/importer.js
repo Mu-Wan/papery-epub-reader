@@ -54,6 +54,7 @@ export async function importBook(file) {
     lastRead: 0,
     updatedAt: now,
   };
+  await book.opened;
   book.destroy();
   await saveImportedBook(record, prepared.data);
   return record;
