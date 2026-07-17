@@ -12,6 +12,7 @@ function normalizeBook(book) {
     boxId: book.boxId || null,
     finishedAt: book.finishedAt || null,
     finishPrompted: Boolean(book.finishPrompted),
+    sortOrder: Number.isFinite(book.sortOrder) ? book.sortOrder : null,
     updatedAt: book.updatedAt || book.lastRead || book.addedAt || now,
   };
 }

@@ -1,19 +1,21 @@
 import { test, expect } from "@playwright/test";
 
-const url = "http://127.0.0.1:4173";
+const url = "http://127.0.0.1:5173";
 
 test.use({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
 
 test("手机端阅读流程与持久统计", async ({ page }) => {
   const failedFonts = [];
   page.on("requestfailed", (request) => {
-    if (request.url().includes("wenkai")) failedFonts.push(request.url());
+    const error = request.failure()?.errorText;
+    if (request.url().includes("wenkai") && error !== "net::ERR_ABORTED") failedFonts.push(`${error}: ${request.url()}`);
   });
   await page.goto(url);
 
   const titleBox = await page.locator(".library-header h1").boundingBox();
   const manageBox = await page.locator(".backup-menu summary").boundingBox();
   expect(Math.abs(titleBox.y - manageBox.y)).toBeLessThan(12);
+  await expect(page.locator(".library-brand-mark")).toBeVisible();
 
   await page.evaluate(async () => {
     const stats = await import("/src/stats-store.js");
@@ -21,6 +23,18 @@ test("手机端阅读流程与持久统计", async ({ page }) => {
   });
   await page.reload();
   await expect(page.locator("#heatmapSummary")).toContainText("2 分钟");
+  const legendAlignment = await page.evaluate(() => {
+    const center = (selector) => {
+      const box = document.querySelector(selector).getBoundingClientRect();
+      return box.top + box.height / 2;
+    };
+    return {
+      top: Math.abs(center(".heatmap-legend span:last-child") - center(".heatmap-months")),
+      bottom: Math.abs(center(".heatmap-legend span:first-child") - center(".heatmap-weekdays span:last-child")),
+    };
+  });
+  expect(legendAlignment.top).toBeLessThan(2);
+  expect(legendAlignment.bottom).toBeLessThan(2);
   await page.evaluate(() => new Promise((resolve, reject) => {
     const request = indexedDB.open("papery-reader", 2);
     request.onsuccess = () => {
@@ -43,21 +57,27 @@ test("手机端阅读流程与持久统计", async ({ page }) => {
 
   await page.locator("#settingsButton").click();
   await expect(page.locator("#settingsPanel")).toBeVisible();
-  await page.locator("#settingsPanel").evaluate((panel) => { panel.scrollTop = 60; });
+  await page.locator(".settings-controls").evaluate((panel) => { panel.scrollTop = 60; });
   await expect(page.locator("#settingsPanel")).toBeVisible();
-  await page.locator("#margin").evaluate((input) => {
-    input.value = "48";
+  await page.locator("#horizontalMargin").evaluate((input) => {
+    input.value = "40";
     input.dispatchEvent(new Event("input", { bubbles: true }));
     input.dispatchEvent(new Event("change", { bubbles: true }));
   });
-  await expect(page.locator("#marginOutput")).toHaveText("48");
-  expect(await page.locator("#readerView").evaluate((node) => node.style.getPropertyValue("--reader-margin"))).toBe("48px");
-  await page.locator("#settingsBackdrop").click({ position: { x: 2, y: 2 } });
-  await expect(page.locator("#settingsPanel")).toBeHidden();
+  await page.locator("#verticalMargin").evaluate((input) => {
+    input.value = "32";
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+    input.dispatchEvent(new Event("change", { bubbles: true }));
+  });
+  await expect(page.locator("#horizontalMarginOutput")).toHaveText("40");
+  await expect(page.locator("#verticalMarginOutput")).toHaveText("32");
+  await expect.poll(() => page.locator("#readerView").evaluate((node) => node.style.getPropertyValue("--reader-margin-x"))).toBe("40px");
+  await page.locator("#settingsPanel").click({ position: { x: 4, y: 4 } });
+  await expect(page.locator("#settingsPanel")).not.toHaveAttribute("open", "");
 
   await page.locator("#settingsButton").click();
   await page.getByRole("button", { name: "霞鹜文楷" }).click();
-  await page.locator("#settingsBackdrop").click({ position: { x: 2, y: 2 } });
+  await page.locator("#settingsPanel").click({ position: { x: 4, y: 4 } });
   const fontState = await page.locator("#viewer iframe").evaluate(async (iframe) => {
     const doc = iframe.contentDocument;
     await doc.fonts.ready;
@@ -82,12 +102,28 @@ test("手机端阅读流程与持久统计", async ({ page }) => {
   const before = await readLocation();
   await page.locator("#viewer iframe").evaluate((iframe) => {
     const doc = iframe.contentDocument;
-    const touch = (x) => new Touch({ identifier: 1, target: doc.body, clientX: x, clientY: 400 });
-    doc.dispatchEvent(new TouchEvent("touchstart", { touches: [touch(320)], bubbles: true }));
-    doc.dispatchEvent(new TouchEvent("touchmove", { touches: [touch(80)], bubbles: true, cancelable: true }));
-    doc.dispatchEvent(new TouchEvent("touchend", { changedTouches: [touch(80)], bubbles: true }));
+    const pointer = (type, x, y) => doc.dispatchEvent(new PointerEvent(type, {
+      bubbles: true, cancelable: true, pointerType: "touch", isPrimary: true, pointerId: 1, clientX: x, clientY: y,
+    }));
+    pointer("pointerdown", 320, 400);
+    pointer("pointermove", 170, 402);
+    pointer("pointerup", 80, 404);
   });
   await expect.poll(readLocation).not.toBe(before);
+  const afterHorizontal = await readLocation();
+  await page.locator("#viewer iframe").evaluate((iframe) => {
+    const doc = iframe.contentDocument;
+    const pointer = (type, y) => doc.dispatchEvent(new PointerEvent(type, {
+      bubbles: true, cancelable: true, pointerType: "touch", isPrimary: true, pointerId: 2, clientX: 190, clientY: y,
+    }));
+    pointer("pointerdown", 480);
+    pointer("pointermove", 280);
+    pointer("pointerup", 100);
+  });
+  await expect.poll(readLocation).not.toBe(afterHorizontal);
+  await page.locator("#tocButton").click();
+  await expect(page.locator("#tocList button")).not.toHaveCount(0);
+  await page.locator("#tocPanel").click({ position: { x: 4, y: 4 } });
   await page.screenshot({ path: "test-results/mobile-reader.png", fullPage: true });
 
   await page.goBack();

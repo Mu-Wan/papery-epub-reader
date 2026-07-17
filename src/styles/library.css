@@ -1,5 +1,7 @@
 .library-view { padding: clamp(20px, 3vw, 38px); }
 .library-header { align-items: center; margin-bottom: 18px; }
+.library-brand { display: flex; min-width: 0; align-items: center; gap: 10px; }
+.library-brand-mark, .mobile-brand-note { display: none; }
 .library-header h1 { font-size: clamp(44px, 5vw, 64px); }
 .library-header .eyebrow { margin-bottom: 7px; font-size: 11px; }
 .library-header .subtitle { margin-top: 11px; font-size: 15px; }
@@ -7,7 +9,7 @@
 .quiet-button { min-height: 38px; padding: 0 14px; border: 1px solid #bdbcb5; border-radius: 999px; color: #454642; background: #ffffff80; cursor: pointer; }
 .quiet-button:hover { border-color: #7d7d76; background: #fff; }
 .install-button { display: inline-flex; min-height: 38px; align-items: center; gap: 7px; padding: 0 15px; border: 1px solid #9aaba3; border-radius: 999px; color: #294c3f; background: #f9fbf9b8; cursor: pointer; font-weight: 750; box-shadow: 0 7px 20px #315c4c12; backdrop-filter: blur(14px); }
-.install-button span { display: grid; width: 18px; height: 18px; place-items: center; border-radius: 50%; color: white; background: #315c4c; font-size: 13px; line-height: 1; }
+.install-button svg { width: 18px; height: 18px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
 .install-button:hover { border-color: #668477; background: #fff; transform: translateY(-1px); }
 .primary-button { min-height: 42px; }
 .shelf-tabs { width: max-content; max-width: calc(100% - 24px); margin: 0 auto 18px; padding: 4px; border: 1px solid #d8d7d1a6; border-radius: 15px; background: #e9e8e280; box-shadow: inset 0 1px 3px #292a2708; backdrop-filter: blur(16px); }
@@ -21,6 +23,24 @@
 .backup-menu > div { position: absolute; top: 45px; right: 0; display: grid; width: 132px; padding: 6px; border: 1px solid #d8d7d0; border-radius: 14px; background: #fffffff2; box-shadow: 0 16px 40px #292a2726; backdrop-filter: blur(18px); }
 .backup-menu button { padding: 10px; border: 0; border-radius: 9px; color: #42433f; background: transparent; cursor: pointer; text-align: left; font-size: 12px; }
 .backup-menu button:hover { background: #eeede8; }
+.backup-menu button:disabled { color: #75847d; cursor: default; }
+.popover-dismiss-layer { position: fixed; z-index: 30; inset: 0; display: none; width: 100%; height: 100%; padding: 0; border: 0; background: transparent; pointer-events: none; }
+.popover-dismiss-layer.show { display: block; }
+.backup-menu[open], .menu-owner-open { position: relative; z-index: 31; }
+.backup-menu.floating-menu-open > div,
+.book-menu.floating-menu-open > div,
+.box-menu.floating-menu-open > div {
+  position: fixed;
+  top: var(--floating-menu-top);
+  right: auto;
+  left: var(--floating-menu-left);
+  max-height: calc(100dvh - 24px);
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
+  scrollbar-width: thin;
+}
 .book-cover { border-radius: 6px 14px 14px 6px; }
 .format-badge { position: absolute; z-index: 2; right: 10px; bottom: 10px; padding: 4px 7px; border: 1px solid #ffffff44; border-radius: 999px; color: #fff; background: #1c1d1aa8; backdrop-filter: blur(8px); font-size: 9px; font-weight: 800; letter-spacing: .08em; }
 .book-progress { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 8px; margin-top: 10px; }
@@ -66,12 +86,16 @@
 @keyframes shelf-in { from { opacity: 0; transform: translateY(3px); } }
 @media (max-width: 760px) {
   .library-header { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 10px; }
+  .library-brand-mark { display: block; width: 32px; height: 32px; flex: none; }
+  .library-brand-copy { display: grid; min-width: 0; gap: 2px; }
   .library-header .eyebrow, .library-header .subtitle { display: none; }
-  .library-header h1 { font-size: 38px; line-height: 1; }
+  .library-header h1 { font-size: 26px; line-height: 1; }
+  .mobile-brand-note { display: block; margin: 0; color: #787a74; font-size: 9px; white-space: nowrap; }
   .header-actions { flex-wrap: nowrap; justify-content: flex-end; gap: 6px; margin-left: 0; }
   .header-actions .quiet-button, .header-actions .primary-button { min-height: 38px; padding: 0 12px; font-size: 12px; }
-  .install-button { width: 38px; min-height: 38px; justify-content: center; padding: 0; overflow: hidden; font-size: 0; }
-  .install-button span { font-size: 13px; }
+  .install-button { min-height: 38px; justify-content: center; gap: 5px; padding: 0 10px; }
+  .install-button span { font-size: 0; }
+  .install-button span::after { content: "安装"; font-size: 12px; }
   .shelf-tabs button { min-width: 78px; padding: 0 13px; }
   .section-heading { align-items: center; gap: 10px; }
   .section-heading h2, .book-count, .section-meta .quiet-button { white-space: nowrap; }
@@ -84,4 +108,7 @@
 
 @media (max-width: 430px) {
   .header-actions .quiet-button, .header-actions .primary-button { padding: 0 10px; }
+  .library-brand { gap: 7px; }
+  .library-brand-mark { width: 28px; height: 28px; }
+  .mobile-brand-note { display: none; }
 }

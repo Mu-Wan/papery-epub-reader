@@ -6,6 +6,8 @@ import { applyReaderTheme, setupSettingControls } from "./reader-settings.js";
 import { startReadingTimer, stopReadingTimer } from "./reading-timer.js";
 import { navigatePage } from "./reader-paging.js";
 import { bindSwipe } from "./reader-gestures.js";
+import { createMarginController } from "./reader-margin.js";
+import { setupTocPanel } from "./toc-panel.js";
 
 let book;
 let rendition;
@@ -18,11 +20,8 @@ let generationToken = 0;
 
 const nextFrame = () => new Promise((resolve) => requestAnimationFrame(resolve));
 const byId = (id) => document.querySelector(`#${id}`);
-
-function applyReaderMargin() {
-  const key = matchMedia("(max-width: 620px)").matches ? "mobileMargin" : "margin";
-  byId("readerView").style.setProperty("--reader-margin", `${preferences[key]}px`);
-}
+const margins = createMarginController(preferences, () => rendition, () => rendition?.location?.start?.cfi || record?.location);
+const renderToc = setupTocPanel((href) => rendition?.display(href));
 
 const updateTheme = () => applyReaderTheme(rendition, preferences);
 
@@ -48,14 +47,6 @@ function onKeydown(event) {
   if (byId("readerView").hidden) return;
   if (event.key === "ArrowRight" || event.key === "ArrowDown") page("next");
   if (event.key === "ArrowLeft" || event.key === "ArrowUp") page("prev");
-}
-
-async function commitMargin() {
-  applyReaderMargin();
-  if (!rendition) return;
-  const location = rendition.location?.start?.cfi || record?.location;
-  await nextFrame();
-  await rendition.resize(undefined, undefined, location);
 }
 
 function progressFrom(location) {
@@ -108,7 +99,10 @@ export function setupReader(callbacks) {
   bindSwipe(byId("readerStage"), page);
   byId("backButton").addEventListener("click", callbacks.onBack);
   document.addEventListener("keydown", onKeydown);
-  setupSettingControls(preferences, { onThemeChange: updateTheme, onMarginInput: applyReaderMargin, onMarginCommit: commitMargin });
+  setupSettingControls(preferences, {
+    onThemeChange: updateTheme, onMarginSync: margins.apply,
+    onMarginInput: margins.schedule, onMarginCommit: margins.commit,
+  });
 }
 
 export async function openReader(bookRecord) {
@@ -120,8 +114,9 @@ export async function openReader(bookRecord) {
   if (!fileRecord?.data) throw new Error("书籍文件不存在");
   book = ePub(fileRecord.data);
   await book.ready;
+  renderToc(book.navigation?.toc || []);
   const hasLocations = loadLocations(fileRecord);
-  applyReaderMargin();
+  margins.apply();
   rendition = book.renderTo("viewer", { width: "100%", height: "100%", flow: "paginated", spread: "auto", minSpreadWidth: 960 });
   rendition.hooks.content.register(async (contents) => {
     await injectReaderFonts(contents);

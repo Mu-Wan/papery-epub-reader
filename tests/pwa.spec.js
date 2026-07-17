@@ -1,7 +1,8 @@
 import { test, expect } from "@playwright/test";
+const pwaUrl = process.env.PWA_URL || "http://127.0.0.1:4174/papery-epub-reader/";
 
 test("PWA 注册更新服务并建立版本缓存", async ({ page }) => {
-  await page.goto("http://127.0.0.1:4174/papery-epub-reader/");
+  await page.goto(pwaUrl);
   const state = await page.evaluate(async () => {
     const registration = await navigator.serviceWorker.ready;
     await registration.update();

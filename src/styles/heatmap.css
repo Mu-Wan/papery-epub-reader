@@ -21,8 +21,15 @@
 .heatmap [data-level="4"], .heatmap-legend [data-level="4"] { background: #315c4c; }
 .heatmap [data-level="future"] { opacity: .2; }
 .heatmap .year-start { border-left: 1px solid #87978e; border-radius: 0 2px 2px 0; }
-.heatmap-legend { display: flex; align-items: center; flex-direction: column-reverse; justify-content: center; gap: 4px; color: #85867f; font-size: 9px; }
+.heatmap-legend { display: grid; align-self: stretch; grid-template-rows: 13px 14px repeat(7, 10px); gap: 2px; place-items: center; color: #85867f; font-size: 9px; line-height: 10px; }
 .heatmap-legend i { width: 10px; }
+.heatmap-legend span:last-child { grid-row: 2; }
+.heatmap-legend [data-level="4"] { grid-row: 3; }
+.heatmap-legend [data-level="3"] { grid-row: 4; }
+.heatmap-legend [data-level="2"] { grid-row: 5; }
+.heatmap-legend [data-level="1"] { grid-row: 6; }
+.heatmap-legend [data-level="0"] { grid-row: 7; }
+.heatmap-legend span:first-child { grid-row: 9; }
 @media (max-width: 760px) {
   .heatmap-section { grid-template-columns: minmax(0, 1fr) 14px; gap: 8px; padding: 10px 12px 11px; border-radius: 17px; }
   .heatmap-heading { display: flex; grid-column: 1 / -1; align-items: center; justify-content: space-between; gap: 12px; }

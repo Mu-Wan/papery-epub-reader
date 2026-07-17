@@ -1,0 +1,90 @@
+name: Release four platforms
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  desktop:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: windows-latest
+            args: --no-bundle
+            plain: true
+            asset: 页间-[version]-Windows-便携版.[ext]
+          - platform: ubuntu-22.04
+            args: --bundles appimage,deb
+            plain: false
+            asset: 页间-[version]-Linux-[bundle].[ext]
+    runs-on: ${{ matrix.platform }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: dtolnay/rust-toolchain@stable
+      - name: 安装 Linux 构建依赖
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev patchelf xdg-utils
+      - run: npm ci
+      - uses: tauri-apps/tauri-action@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tagName: v__VERSION__
+          releaseName: 页间 v__VERSION__
+          releaseBody: |
+            本地优先的 EPUB / TXT 阅读器。
+            本版本同时提供 Windows、Linux、Android 与 PWA。
+          releaseDraft: false
+          prerelease: false
+          args: ${{ matrix.args }}
+          uploadPlainBinary: ${{ matrix.plain }}
+          releaseAssetNamePattern: ${{ matrix.asset }}
+
+  android:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - uses: android-actions/setup-android@v3
+      - name: 安装 Android 工具链
+        run: sdkmanager "platforms;android-36" "build-tools;35.0.0" "ndk;27.0.12077973"
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-linux-android
+      - run: npm ci
+      - name: 写入 Android 发布签名
+        run: |
+          echo "${{ secrets.ANDROID_KEY_BASE64 }}" | base64 --decode > "$RUNNER_TEMP/upload-keystore.jks"
+          echo "keyAlias=${{ secrets.ANDROID_KEY_ALIAS }}" > src-tauri/gen/android/keystore.properties
+          echo "password=${{ secrets.ANDROID_KEY_PASSWORD }}" >> src-tauri/gen/android/keystore.properties
+          echo "storeFile=$RUNNER_TEMP/upload-keystore.jks" >> src-tauri/gen/android/keystore.properties
+      - uses: tauri-apps/tauri-action@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NDK_HOME: ${{ env.ANDROID_HOME }}/ndk/27.0.12077973
+        with:
+          mobile: android
+          tagName: v__VERSION__
+          releaseName: 页间 v__VERSION__
+          releaseDraft: false
+          prerelease: false
+          args: --apk --target aarch64 --ci
+          releaseAssetNamePattern: 页间-[version]-Android-arm64.[ext]

@@ -7,3 +7,12 @@
 .app-dialog select { width: 100%; min-height: 44px; padding: 0 12px; border: 1px solid #cccbc4; border-radius: 12px; color: #30312e; background: #fff; }
 .dialog-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 7px; }
 .dialog-actions .primary-button { min-height: 38px; padding: 0 16px; }
+.install-help-dialog form { grid-template-columns: 48px minmax(0, 1fr); align-items: center; }
+.install-help-icon { display: grid; width: 46px; height: 46px; grid-row: 1; place-items: center; border: 1px solid #d6ddd8; border-radius: 14px; background: #eef2ee; }
+.install-help-icon img { width: 30px; height: 30px; }
+.install-help-copy { grid-column: 1 / -1; margin: 0; color: #61635e; line-height: 1.75; }
+.install-help-dialog .dialog-actions { grid-column: 1 / -1; }
+@media (max-width: 620px) {
+  .app-dialog { width: calc(100vw - 24px); border-radius: 22px; }
+  .app-dialog form { gap: 14px; padding: 22px; }
+}

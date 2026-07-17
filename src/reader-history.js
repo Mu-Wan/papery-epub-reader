@@ -1,11 +1,12 @@
 let readerEntry = false;
 let returnToLibrary = () => {};
 
-const isWeb = () => !window.__TAURI_INTERNALS__;
+// 浏览器与窄屏 Tauri 都使用历史栈，让系统返回手势先回到书架。
+const usesHistory = () => !window.__TAURI_INTERNALS__ || matchMedia("(max-width: 620px)").matches;
 
 export function setupReaderHistory(callback) {
   returnToLibrary = callback;
-  if (!isWeb()) return;
+  if (!usesHistory()) return;
   if (history.state?.paperyView !== "library") history.replaceState({ paperyView: "library" }, "");
   window.addEventListener("popstate", () => {
     if (!readerEntry) return;
@@ -15,13 +16,13 @@ export function setupReaderHistory(callback) {
 }
 
 export function enterReaderHistory() {
-  if (!isWeb() || readerEntry) return;
+  if (!usesHistory() || readerEntry) return;
   history.pushState({ paperyView: "reader" }, "");
   readerEntry = true;
 }
 
 export function leaveReaderHistory() {
-  if (isWeb() && readerEntry) {
+  if (usesHistory() && readerEntry) {
     history.back();
     return;
   }

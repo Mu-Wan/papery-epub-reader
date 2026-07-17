@@ -19,6 +19,8 @@ export function applyReaderTheme(rendition, preferences) {
       "background-image": `${texture.image} !important`,
       "background-size": `${texture.size} !important`,
       margin: "0 !important",
+      "touch-action": "none !important",
+      "overscroll-behavior": "contain !important",
     },
     body: { position: "relative !important", "min-height": "100% !important" },
     html: { "padding-top": "0 !important", "padding-bottom": "0 !important" },
@@ -41,7 +43,8 @@ function optionButton(item, active, className, onClick) {
 
 export function setupSettingControls(preferences, callbacks) {
   const elements = Object.fromEntries([
-    "fontSize", "lineHeight", "margin", "fontSizeOutput", "lineHeightOutput", "marginOutput",
+    "fontSize", "lineHeight", "horizontalMargin", "verticalMargin", "fontSizeOutput", "lineHeightOutput",
+    "horizontalMarginOutput", "verticalMarginOutput",
     "fontChoices", "paperChoices", "textureChoices",
   ].map((id) => [id, byId(id)]));
 
@@ -75,16 +78,30 @@ export function setupSettingControls(preferences, callbacks) {
     }));
   }
 
-  const mobileQuery = matchMedia("(max-width: 620px)");
-  function syncMargin() {
-    const mobile = mobileQuery.matches;
-    const key = mobile ? "mobileMargin" : "margin";
-    elements.margin.min = mobile ? 8 : 16;
-    elements.margin.max = mobile ? 48 : 96;
-    elements.margin.step = mobile ? 4 : 8;
-    elements.margin.value = preferences[key];
-    elements.marginOutput.value = preferences[key];
-    callbacks.onMarginInput();
+  function marginConfig() {
+    const stage = byId("readerStage");
+    const compact = stage.clientWidth <= 620;
+    const width = Math.max(stage.clientWidth, 320);
+    const height = Math.max(stage.clientHeight, 480);
+    return compact ? {
+      horizontal: ["compactHorizontalMargin", 8, Math.max(24, Math.min(48, Math.floor(width * .16 / 4) * 4)), 4],
+      vertical: ["compactVerticalMargin", 4, Math.max(32, Math.min(64, Math.floor(height * .12 / 4) * 4)), 4],
+    } : {
+      horizontal: ["horizontalMargin", 16, Math.max(64, Math.min(112, Math.floor(width * .12 / 8) * 8)), 8],
+      vertical: ["verticalMargin", 8, Math.max(48, Math.min(96, Math.floor(height * .12 / 8) * 8)), 8],
+    };
+  }
+
+  function syncMargins() {
+    const config = marginConfig();
+    Object.entries(config).forEach(([axis, [key, minimum, maximum, step]]) => {
+      const input = elements[`${axis}Margin`];
+      preferences[key] = Math.min(Math.max(preferences[key], minimum), maximum);
+      Object.assign(input, { min: minimum, max: maximum, step, value: preferences[key] });
+      elements[`${axis}MarginOutput`].value = preferences[key];
+    });
+    savePreferences(preferences);
+    callbacks.onMarginSync();
   }
 
   ["fontSize", "lineHeight"].forEach((name) => {
@@ -97,15 +114,17 @@ export function setupSettingControls(preferences, callbacks) {
     savePreferences(preferences);
     callbacks.onThemeChange();
   }));
-  elements.margin.addEventListener("input", (event) => {
-    const key = mobileQuery.matches ? "mobileMargin" : "margin";
-    preferences[key] = Number(event.target.value);
-    elements.marginOutput.value = preferences[key];
-    savePreferences(preferences);
-    callbacks.onMarginInput();
+  ["horizontal", "vertical"].forEach((axis) => {
+    elements[`${axis}Margin`].addEventListener("input", (event) => {
+      const key = marginConfig()[axis][0];
+      preferences[key] = Number(event.target.value);
+      elements[`${axis}MarginOutput`].value = preferences[key];
+      savePreferences(preferences);
+      callbacks.onMarginInput();
+    });
+    elements[`${axis}Margin`].addEventListener("change", callbacks.onMarginCommit);
   });
-  elements.margin.addEventListener("change", callbacks.onMarginCommit);
-  mobileQuery.addEventListener("change", syncMargin);
-  syncMargin();
+  new ResizeObserver(syncMargins).observe(byId("readerStage"));
+  syncMargins();
   renderChoices();
 }

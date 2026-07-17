@@ -2,7 +2,8 @@ const READER_FONT = "LXGW WenKai";
 let readerFontCss = "";
 
 function absoluteFontRule(rule, base) {
-  return rule.cssText.replace(/url\(["']?([^"')]+)["']?\)/g, (_, source) => {
+  const css = rule.cssText.replace(/font-display:\s*swap/gi, "font-display: block");
+  return css.replace(/url\(["']?([^"')]+)["']?\)/g, (_, source) => {
     try { return `url("${new URL(source, base).href}")`; } catch { return `url("${source}")`; }
   });
 }
@@ -29,8 +30,15 @@ function collectFontRules() {
 }
 
 export async function injectReaderFonts(contents) {
+  const root = contents.document.documentElement;
+  root.style.visibility = "hidden";
   const css = collectFontRules();
-  if (css) contents.addStylesheetCss(css, "papery-reader-fonts");
-  const text = contents.document.body?.textContent || "页间";
-  await contents.document.fonts?.load(`18px "${READER_FONT}"`, text);
+  try {
+    if (css) contents.addStylesheetCss(css, "papery-reader-fonts");
+    const text = contents.document.body?.textContent || "页间";
+    await contents.document.fonts?.load(`18px "${READER_FONT}"`, text);
+    await contents.document.fonts?.ready;
+  } finally {
+    root.style.visibility = "visible";
+  }
 }
