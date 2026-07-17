@@ -1,4 +1,4 @@
-@import "lxgw-wenkai-lite-webfont/lxgwwenkailite-regular.css";
+@import "lxgw-wenkai-webfont/lxgwwenkai-regular.css";
 
 :root {
   color: #20211f;
@@ -89,8 +89,8 @@ h2 { margin: 0; font-size: 24px; }
 .toast.show { opacity: 1; transform: translate(-50%, 0); }
 
 @media (max-width: 620px) {
-  .library-view { padding: 26px 20px; }
-  .library-header { align-items: flex-start; margin-bottom: 40px; }
+  .library-view { padding: 18px 16px 24px; }
+  .library-header { margin-bottom: 14px; }
   .subtitle { font-size: 15px; }
   .primary-button { min-height: 42px; padding: 0 15px; white-space: nowrap; }
   .book-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 22px 16px; }

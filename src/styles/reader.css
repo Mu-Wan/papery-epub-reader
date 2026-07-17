@@ -46,6 +46,7 @@
   box-shadow: 0 18px 50px #1a1b1826;
   backdrop-filter: blur(18px);
 }
+.settings-backdrop { position: fixed; z-index: 9; inset: 0; padding: 0; border: 0; background: transparent; cursor: default; }
 .settings-panel label { display: flex; min-width: 0; flex-direction: column; gap: 10px; color: #60615d; font-size: 13px; font-weight: 700; }
 .settings-panel label span { display: flex; justify-content: space-between; }
 .settings-panel output { color: #222; }
@@ -57,7 +58,7 @@
 .paper-choice { width: 34px; height: 34px; border: 1px solid #9997; border-radius: 50%; cursor: pointer; }
 .paper-choice.active { outline: 2px solid #315c4c; outline-offset: 3px; }
 
-.reader-stage { position: relative; min-height: 0; overflow: hidden; padding: var(--reader-margin); }
+.reader-stage { position: relative; min-height: 0; overflow: hidden; padding: var(--reader-margin); touch-action: pan-y; }
 .viewer { width: 100%; height: 100%; margin: auto; overflow: hidden; }
 .loading { display: grid; height: 100%; place-items: center; color: #777; }
 .page-zone { position: absolute; z-index: 4; top: 0; bottom: 0; width: clamp(44px, 6vw, 86px); border: 0; color: #555; background: transparent; cursor: pointer; font: 300 38px/1 Georgia, serif; opacity: .18; transition: opacity .2s, background .2s; }
@@ -65,15 +66,18 @@
 .prev-zone { left: 0; }
 .next-zone { right: 0; }
 .reader-footer { display: flex; align-items: center; justify-content: center; color: #7b7b75; font-size: 11px; }
+.mobile-hint { display: none; }
 
 @media (max-width: 620px) {
   .reader-view { grid-template-rows: 34px minmax(0, 1fr) 20px; }
   .reader-header { grid-template-columns: 46px minmax(0, 1fr) 54px; padding: 0 6px; }
   .reader-title-wrap span { display: none; }
-  .settings-panel { top: 68px; right: 10px; width: calc(100vw - 20px); grid-template-columns: 1fr; gap: 14px; }
+  .settings-panel { top: 44px; right: 8px; width: calc(100vw - 16px); max-height: calc(100dvh - 54px); grid-template-columns: 1fr; gap: 13px; padding: 17px; overflow-y: auto; overscroll-behavior: contain; touch-action: pan-y; -webkit-overflow-scrolling: touch; }
   .setting-row { grid-column: auto; }
   .page-zone { width: 38px; }
-  .reader-stage { padding: min(var(--reader-margin), 24px); }
+  .reader-stage { padding: var(--reader-margin); }
+  .desktop-hint { display: none; }
+  .mobile-hint { display: inline; }
 }
 
 html:not(.tauri) .settings-panel { top: 42px; }

@@ -75,7 +75,19 @@ export function setupSettingControls(preferences, callbacks) {
     }));
   }
 
-  ["fontSize", "lineHeight", "margin"].forEach((name) => {
+  const mobileQuery = matchMedia("(max-width: 620px)");
+  function syncMargin() {
+    const mobile = mobileQuery.matches;
+    const key = mobile ? "mobileMargin" : "margin";
+    elements.margin.min = mobile ? 8 : 16;
+    elements.margin.max = mobile ? 48 : 96;
+    elements.margin.step = mobile ? 4 : 8;
+    elements.margin.value = preferences[key];
+    elements.marginOutput.value = preferences[key];
+    callbacks.onMarginInput();
+  }
+
+  ["fontSize", "lineHeight"].forEach((name) => {
     elements[name].value = preferences[name];
     elements[`${name}Output`].value = preferences[name];
   });
@@ -86,11 +98,14 @@ export function setupSettingControls(preferences, callbacks) {
     callbacks.onThemeChange();
   }));
   elements.margin.addEventListener("input", (event) => {
-    preferences.margin = Number(event.target.value);
-    elements.marginOutput.value = preferences.margin;
+    const key = mobileQuery.matches ? "mobileMargin" : "margin";
+    preferences[key] = Number(event.target.value);
+    elements.marginOutput.value = preferences[key];
     savePreferences(preferences);
     callbacks.onMarginInput();
   });
   elements.margin.addEventListener("change", callbacks.onMarginCommit);
+  mobileQuery.addEventListener("change", syncMargin);
+  syncMargin();
   renderChoices();
 }

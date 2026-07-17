@@ -5,9 +5,10 @@ export default defineConfig(({ mode }) => {
   const web = mode === "web";
   return {
     base: web ? "/papery-epub-reader/" : "./",
-    plugins: web ? [VitePWA({
-      registerType: "autoUpdate",
-      injectRegister: "auto",
+    plugins: [VitePWA({
+      disable: !web,
+      registerType: "prompt",
+      injectRegister: null,
       includeAssets: ["app-mark.svg", "pwa-192.png", "pwa-512.png", "pwa-maskable-512.png"],
       manifest: {
         name: "页间 · 本地阅读器",
@@ -30,8 +31,10 @@ export default defineConfig(({ mode }) => {
       workbox: {
         globPatterns: ["**/*.{js,css,html,svg,png,ico,woff2,txt}"],
         cleanupOutdatedCaches: true,
+        skipWaiting: true,
+        clientsClaim: true,
       },
-    })] : [],
+    })],
     build: { chunkSizeWarningLimit: 650 },
   };
 });
