@@ -6,6 +6,7 @@
     <meta name="theme-color" content="#f3f1ec" />
     <title>页间 · EPUB 阅读器</title>
     <link rel="icon" href="/src/assets/app-mark.svg" />
+    <link rel="apple-touch-icon" href="/pwa-192.png" />
     <link rel="stylesheet" href="/src/styles/base.css" />
     <link rel="stylesheet" href="/src/styles/library.css" />
     <link rel="stylesheet" href="/src/styles/heatmap.css" />
@@ -34,6 +35,7 @@
           <p class="subtitle">一个安静、轻巧的本地 EPUB 与 TXT 书架。</p>
         </div>
         <div class="header-actions">
+          <button id="installPwaButton" class="install-button" type="button" hidden><span aria-hidden="true">↓</span> 安装页间</button>
           <details class="backup-menu"><summary class="quiet-button">管理</summary><div>
             <button id="exportButton" type="button">导出备份</button>
             <button id="importBackupButton" type="button">合并恢复</button>
@@ -62,7 +64,15 @@
       <section class="shelf-section" aria-labelledby="shelfTitle">
         <div class="section-heading">
           <div class="shelf-title-row"><button id="boxBackButton" class="box-back" type="button" aria-label="返回主书架" hidden>←</button><h2 id="shelfTitle">我的书架</h2></div>
-          <div class="section-meta"><span id="bookCount" class="book-count">0 本</span><button id="createBoxButton" class="quiet-button" hidden>＋ 新建书盒</button></div>
+          <div class="section-meta"><span id="bookCount" class="book-count">0 本</span>
+            <button id="createBoxButton" class="create-box-button" type="button" aria-label="新建书盒" hidden>
+              <svg class="create-box-icon" viewBox="0 0 28 28" aria-hidden="true">
+                <path d="M5.5 9.5 14 12.7l8.4-3.2M6.2 9l1.1 11 6.7 2.4 6.7-2.4 1.1-11-7.8 3-7.8-3Z" />
+                <path d="M14 12.7v9.7M10.2 6.8c2.4-.8 5.2-.8 7.6 0M14 4.5v4.2M11.9 6.6h4.2" />
+              </svg>
+              <span>新建书盒</span>
+            </button>
+          </div>
         </div>
         <div id="emptyState" class="empty-state">
           <div class="empty-mark">阅</div>

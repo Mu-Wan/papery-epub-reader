@@ -9,6 +9,7 @@ export const PAPERS = [
 ];
 
 export const FONTS = [
+  { id: "wenkai", label: "霞鹜文楷", family: '"LXGW WenKai Lite", "KaiTi", serif' },
   { id: "song", label: "宋体", family: '"Songti SC", "SimSun", "Noto Serif CJK SC", serif' },
   { id: "yahei", label: "雅黑", family: '"Microsoft YaHei", "PingFang SC", sans-serif' },
   { id: "kai", label: "楷体", family: '"KaiTi", "STKaiti", serif' },

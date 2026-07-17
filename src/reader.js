@@ -1,6 +1,7 @@
 import ePub from "epubjs";
 import { getBookFile, saveBook, saveBookLocations } from "./book-store.js";
 import { loadPreferences } from "./preferences.js";
+import { injectReaderFonts } from "./reader-fonts.js";
 import { applyReaderTheme, setupSettingControls } from "./reader-settings.js";
 import { startReadingTimer, stopReadingTimer } from "./reading-timer.js";
 import { navigatePage } from "./reader-paging.js";
@@ -114,9 +115,10 @@ export async function openReader(bookRecord) {
   applyReaderMargin();
   rendition = book.renderTo("viewer", { width: "100%", height: "100%", flow: "paginated", spread: "auto", minSpreadWidth: 960 });
   rendition.hooks.content.register((contents) => {
+    injectReaderFonts(contents);
     contents.document.addEventListener("wheel", onWheel, { passive: false });
     contents.document.addEventListener("keydown", onKeydown);
-    contents.document.addEventListener("pointerdown", contentPointerDown);
+    contents.document.addEventListener("pointerdown", contentPointerDown, { capture: true });
   });
   rendition.on("relocated", onRelocated);
   updateTheme();

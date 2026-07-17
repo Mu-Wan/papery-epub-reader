@@ -7,15 +7,15 @@
 ## 在线体验
 
 - [打开页间 PWA](https://mu-wan.github.io/papery-epub-reader/)
-- 安卓、统信 UOS 与桌面 Chromium 均可使用“安装到桌面”
+- 页面顶部提供“安装页间”，安卓、统信 UOS 与桌面 Chromium 可直接调起安装框
 - 安装后可离线打开；书籍仍只保存在当前设备的浏览器中
 
-## v1.1.0 功能
+## v1.1.1 功能
 
 - 本地导入 EPUB 与 TXT，自动读取封面、书名和作者
 - TXT 支持 UTF-8、BOM、GBK / GB18030，并自动识别常见中文章节
 - 鼠标滚轮、左右方向键或点击页面两侧翻页
-- 支持字号、行距、四周边距、中文字体、纸色与纸张质感
+- 支持字号、行距、四周边距、霞鹜文楷等中文字体、纸色与纸张质感
 - 按窗口宽度自动切换双栏或单栏排版
 - 书架、在读与已完成分区，书卡显示真实阅读进度
 - 可创建书盒整理书籍；删除书盒不会删除其中的书
@@ -27,7 +27,7 @@
 
 [下载最新 Windows 便携版](https://github.com/Mu-Wan/papery-epub-reader/releases/latest)
 
-下载 `Papery-Reader-v1.1.0.exe` 后双击即可运行，无需安装。系统要求为 Windows 10 / 11，并启用 Microsoft Edge WebView2 Runtime；多数现代 Windows 系统已自带。
+下载 `页间-1.1.1-Tauri轻量版.exe` 后双击即可运行，无需安装。系统要求为 Windows 10 / 11，并启用 Microsoft Edge WebView2 Runtime；多数现代 Windows 系统已自带。
 
 ## 数据与备份
 
@@ -74,3 +74,5 @@ npm run package:tauri
 ## 许可证
 
 [MIT License](LICENSE)
+
+内置霞鹜文楷轻量版采用 [SIL Open Font License 1.1](public/licenses/LXGW-WenKai-OFL.txt)。

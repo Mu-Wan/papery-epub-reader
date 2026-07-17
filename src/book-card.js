@@ -22,6 +22,7 @@ function createMenu(book, callback) {
   summary.textContent = "⋯";
   const menu = document.createElement("div");
   menu.append(actionButton(book.status === "unread" ? "开始阅读" : "继续阅读", "open", book, callback));
+  if (book.status === "reading") menu.append(actionButton("取消在读", "unread", book, callback));
   menu.append(actionButton(book.boxId ? "移出书盒" : "移入书盒…", book.boxId ? "unbox" : "box", book, callback));
   menu.append(actionButton(book.status === "finished" ? "移回在读" : "标记读完", book.status === "finished" ? "reading" : "finish", book, callback));
   menu.append(actionButton("删除", "delete", book, callback));

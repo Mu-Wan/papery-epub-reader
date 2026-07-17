@@ -6,6 +6,9 @@
 .header-actions, .section-meta, .shelf-tabs { display: flex; align-items: center; gap: 10px; }
 .quiet-button { min-height: 38px; padding: 0 14px; border: 1px solid #bdbcb5; border-radius: 999px; color: #454642; background: #ffffff80; cursor: pointer; }
 .quiet-button:hover { border-color: #7d7d76; background: #fff; }
+.install-button { display: inline-flex; min-height: 38px; align-items: center; gap: 7px; padding: 0 15px; border: 1px solid #9aaba3; border-radius: 999px; color: #294c3f; background: #f9fbf9b8; cursor: pointer; font-weight: 750; box-shadow: 0 7px 20px #315c4c12; backdrop-filter: blur(14px); }
+.install-button span { display: grid; width: 18px; height: 18px; place-items: center; border-radius: 50%; color: white; background: #315c4c; font-size: 13px; line-height: 1; }
+.install-button:hover { border-color: #668477; background: #fff; transform: translateY(-1px); }
 .primary-button { min-height: 42px; }
 .shelf-tabs { width: max-content; max-width: calc(100% - 24px); margin: 0 auto 18px; padding: 4px; border: 1px solid #d8d7d1a6; border-radius: 15px; background: #e9e8e280; box-shadow: inset 0 1px 3px #292a2708; backdrop-filter: blur(16px); }
 .shelf-tabs button { position: relative; min-width: 94px; height: 38px; padding: 0 20px; border: 0; border-radius: 11px; color: #777872; background: transparent; cursor: pointer; font-weight: 700; }
@@ -34,6 +37,10 @@
 .shelf-title-row { display: flex; min-width: 0; align-items: center; gap: 10px; }
 .box-back { display: grid; width: 34px; height: 34px; flex: none; place-items: center; border: 1px solid #cfcec7; border-radius: 50%; color: #34483f; background: #ffffffa8; cursor: pointer; font-size: 20px; box-shadow: 0 6px 18px #292a270d; }
 .box-back:hover { border-color: #9ca59f; background: #fff; transform: translateX(-1px); }
+.create-box-button { display: flex; height: 40px; align-items: center; gap: 8px; padding: 0 13px 0 9px; border: 1px solid #d0cec5; border-radius: 12px 15px 13px 11px; color: #3e554b; background: #fbfaf6c7; cursor: pointer; font-size: 13px; font-weight: 700; box-shadow: 0 7px 20px #4a463b0d, inset 0 1px #fff; backdrop-filter: blur(12px); transition: border-color .2s, box-shadow .2s, transform .2s; }
+.create-box-button:hover { border-color: #9eaaa3; background: #fffefa; box-shadow: 0 10px 24px #4a463b16, inset 0 1px #fff; transform: translateY(-1px) rotate(-.25deg); }
+.create-box-icon { width: 27px; height: 27px; flex: none; overflow: visible; fill: none; stroke: currentColor; stroke-width: 1.45; stroke-linecap: round; stroke-linejoin: round; transition: transform .2s; }
+.create-box-button:hover .create-box-icon { transform: rotate(2deg) translateY(-1px); }
 .box-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(310px, 1fr)); gap: 20px; padding-top: 28px; }
 .box-card { position: relative; display: flex; min-height: 164px; align-items: center; justify-content: space-between; padding: 18px 16px 15px 20px; overflow: hidden; border: 1px solid #d6d4cd; border-radius: 24px; background: radial-gradient(circle at 25% 8%, #fff 0, transparent 42%), linear-gradient(145deg, #fdfcf9e8, #eeece6c7); box-shadow: 0 16px 42px #34342f12, inset 0 1px #fff; transition: border-color .2s, box-shadow .2s, transform .2s; }
 .box-card::after { position: absolute; inset: auto 18px 0; height: 1px; content: ""; background: linear-gradient(90deg, transparent, #83928842, transparent); }
@@ -59,12 +66,14 @@
 @keyframes shelf-in { from { opacity: 0; transform: translateY(3px); } }
 @media (max-width: 760px) {
   .library-header { flex-wrap: wrap; }
-  .header-actions { margin-left: auto; }
+  .header-actions { flex-wrap: wrap; justify-content: flex-end; margin-left: auto; }
+  .install-button { padding: 0 12px; }
   .shelf-tabs button { min-width: 78px; padding: 0 13px; }
   .section-heading { align-items: center; gap: 10px; }
   .section-heading h2, .book-count, .section-meta .quiet-button { white-space: nowrap; }
   .section-heading h2 { font-size: 22px; }
   .section-meta { gap: 6px; }
   .book-count { font-size: 13px; }
-  .section-meta .quiet-button { padding: 0 10px; }
+  .create-box-button { width: 40px; height: 38px; padding: 0; justify-content: center; }
+  .create-box-button > span { display: none; }
 }
