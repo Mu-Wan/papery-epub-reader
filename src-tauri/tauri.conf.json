@@ -1,0 +1,42 @@
+{
+  "productName": "Papery Reader",
+  "version": "0.1.0",
+  "identifier": "com.papery.reader",
+  "build": {
+    "beforeDevCommand": "",
+    "beforeBuildCommand": "node scripts/tauri-before-build.mjs",
+    "devUrl": "http://localhost:3000",
+    "frontendDist": "../out"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "Papery 阅读器",
+        "width": 1280,
+        "height": 800,
+        "minWidth": 800,
+        "minHeight": 600,
+        "decorations": false
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' blob:; script-src 'self' 'unsafe-inline' 'unsafe-eval'; worker-src 'self' blob:; font-src 'self' data:; connect-src 'self' blob: data: ipc: http://ipc.localhost; child-src 'self' blob:; frame-src 'self' blob:"
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["nsis", "portable"],
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "windows": {
+      "nsis": {
+        "installMode": "currentUser"
+      }
+    }
+  }
+}
