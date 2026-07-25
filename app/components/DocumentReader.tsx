@@ -10,6 +10,7 @@ import { saveSetting } from "../lib/local-library";
 
 const sourceBuffers=new Map<string,Promise<ArrayBuffer>>();
 function readSource(source:string){let pending=sourceBuffers.get(source);if(!pending){pending=fetch(source).then(response=>{if(!response.ok)throw new Error("读取文件失败");return response.arrayBuffer()});sourceBuffers.set(source,pending);if(sourceBuffers.size>4)sourceBuffers.delete(sourceBuffers.keys().next().value!)}return pending}
+function withTimeout<T>(promise:Promise<T>,ms:number,label:string):Promise<T>{return new Promise<T>((resolve,reject)=>{const timer=setTimeout(()=>reject(new Error(`[Papery] 超时(${ms}ms): ${label}`)),ms);promise.then(v=>{clearTimeout(timer);resolve(v)},e=>{clearTimeout(timer);reject(e)})})}
 export function warmReaderFormat(format:Props["format"]){if(format==="EPUB"){void import("epubjs");void import("foliate-js/view.js")}if(format==="PDF")void loadPdfJs()}
 
 type Props = {
@@ -327,16 +328,20 @@ function FoliateEpubReader({source,bookId,settings,initialLocation,annotations,o
     let activeDocumentCleanup:(()=>void)|null=null;
     const warmedSections=new Map<number,Promise<unknown>>();
     (async()=>{
-      const [{Overlayer},buffer]=await Promise.all([import("foliate-js/overlayer.js"),readSource(source)]);
+      console.log("[Papery] EPUB init: start");
+      const [{Overlayer},buffer]=await withTimeout(Promise.all([import("foliate-js/overlayer.js"),readSource(source)]),15000,"加载文件与模块");
+      console.log("[Papery] EPUB init: source loaded, buffer size=",buffer.byteLength);
       // 字体加载不阻塞初始化流程，避免 fetch 挂起导致 EPUB 永远转圈
       if(settingsRef.current.fontFamily==="lxgw")loadEpubFontBuffer().catch(()=>undefined);
-      await import("foliate-js/view.js");
+      await withTimeout(import("foliate-js/view.js"),10000,"导入 foliate view");
+      console.log("[Papery] EPUB init: view.js imported");
       if(cancelled||!host.current)return;
       view=document.createElement("foliate-view") as any;
       view.className="foliateView";
       host.current.append(view);viewRef.current=view;
       if(settingsRef.current.fontFamily==="lxgw")preloadEpubFont();
-      await view.open(new File([buffer],`${bookId}.epub`,{type:"application/epub+zip"}));
+      await withTimeout(view.open(new File([buffer],`${bookId}.epub`,{type:"application/epub+zip"})),20000,"打开 EPUB");
+      console.log("[Papery] EPUB init: book opened, sections=",view.book?.sections?.length);
       if(cancelled)return;
 
       view.book.transformTarget?.addEventListener("data",(event:any)=>{
@@ -389,7 +394,9 @@ function FoliateEpubReader({source,bookId,settings,initialLocation,annotations,o
       view.addEventListener("draw-annotation",drawAnnotation);view.addEventListener("create-overlay",onOverlay);view.addEventListener("relocate",onRelocate);view.addEventListener("load",onLoad);
 
       const target=foliateLocator(currentLocator.current);
-      await view.init({lastLocation:target,showTextStart:true});
+      console.log("[Papery] EPUB init: calling view.init, target=",target);
+      await withTimeout(view.init({lastLocation:target,showTextStart:true}),20000,"初始化视图");
+      console.log("[Papery] EPUB init: view.init done");
       if(cancelled)return;
       setStatus("ready");
       const findQuote=async(quote:string,preferredIndex?:number,prefix?:string,suffix?:string)=>{const candidates:{cfi:string;index:number;score:number}[]=[];for await(const item of view.search({query:quote})){if(item==="done")break;for(const match of item?.subitems||[]){if(!match?.cfi)continue;let index=-1;try{index=view.resolveNavigation(match.cfi)?.index??-1}catch{}const pre=String(match.excerpt?.pre||""),post=String(match.excerpt?.post||"");candidates.push({cfi:match.cfi,index,score:(index===preferredIndex?1000000:0)+(prefix?matchingPrefix(prefix,pre)*1000:0)+(suffix?matchingSuffix(suffix,post)*1000:0)})}}view.clearSearch();return candidates.sort((a,b)=>b.score-a.score)[0]?.cfi||null};
@@ -445,13 +452,14 @@ function EpubScrollReader({source,bookId,settings,initialLocation,annotations,on
   useEffect(()=>{
     let book:any,rendition:any,cancelled=false,removeScrollTracking:(()=>void)|null=null,reportScrollPosition:(()=>void)|null=null;
     (async()=>{
-      const [epubModule,buffer]=await Promise.all([import("epubjs"),readSource(source),settingsRef.current.fontFamily==="lxgw"?loadEpubFontBuffer():Promise.resolve(null)]);
+      const [epubModule,buffer]=await withTimeout(Promise.all([import("epubjs"),readSource(source)]),20000,"加载 EPUB 模块与文件");
+      // 字体加载不阻塞初始化流程
+      if(settingsRef.current.fontFamily==="lxgw")loadEpubFontBuffer().catch(()=>undefined);
       if(cancelled||!host.current)return;
       if(settingsRef.current.fontFamily==="lxgw")preloadEpubFont();
       const createBook=(epubModule as any).default||epubModule;
       book=createBook(buffer);bookRef.current=book;
-      await book.ready;
-      let waitForFirstEpubFont=true;
+      await withTimeout(book.ready,15000,"解析 EPUB 结构");
       book.spine.hooks.content.register((doc:Document)=>{
         // 尽早同步注入 style 元素，在 FontFace 异步加载前就让 font-family 规则生效
         const earlyStack=epubFontStack(settingsRef.current.fontFamily);
@@ -461,9 +469,9 @@ function EpubScrollReader({source,bookId,settings,initialLocation,annotations,on
           earlyStyle.textContent=`@font-face{font-family:"Papery LXGW WenKai";font-style:normal;font-weight:100 900;font-display:swap;src:url("${epubFontUrl}") format("woff2")}html,body{font-family:${earlyStack}!important}body *{font-family:inherit!important}`;
           (doc.head||doc.documentElement).prepend(earlyStyle);
         }
-        const pending=applyEpubDocumentFont(doc,settingsRef.current);if(waitForFirstEpubFont){waitForFirstEpubFont=false;return pending}void pending
+        void applyEpubDocumentFont(doc,settingsRef.current)
       });
-      const navigation=await book.loaded.navigation;
+      const navigation=await withTimeout(book.loaded.navigation,10000,"加载目录");
       const spineTotal=Math.max(1,book.spine.spineItems.length);
       const toc=flattenToc(navigation.toc).map(item=>{const href=parseLocator<{href:string}>(item.locator)?.href||"",section=book.spine.get(href.split("#")[0]);return{...item,page:Math.max(1,(section?.index||0)+1)}});onToc(toc);
       void saveSetting(`analysis:${bookId}`,{totalPages:spineTotal,analyzedAt:Date.now()});
@@ -509,7 +517,7 @@ function EpubScrollReader({source,bookId,settings,initialLocation,annotations,on
         doc.addEventListener("mouseleave",()=>onEdgeCue?.(null));
       });
       const saved=parseLocator<{cfi?:string;href?:string}>(currentLocator.current);
-      await rendition.display(saved?.cfi||saved?.href||undefined);
+      await withTimeout(rendition.display(saved?.cfi||saved?.href||undefined),20000,"渲染首屏");
       if(cancelled)return;
       const scrollHost=host.current,container=scrollHost?.querySelector<HTMLElement>(".epub-container");
       if(container&&scrollHost){
