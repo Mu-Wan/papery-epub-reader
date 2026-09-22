@@ -1,0 +1,4 @@
+# Copy this file to .env. Keep .env private.
+SYNC_DOMAIN=sync.example.com
+GOOGLE_CLIENT_ID=replace-with-web-client-id.apps.googleusercontent.com
+GOOGLE_CLIENT_SECRET=replace-with-client-secret

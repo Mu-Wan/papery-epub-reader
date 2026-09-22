@@ -110,7 +110,7 @@ async function main() {
       env: { ...process.env, PAPERY_STATIC_BUILD: "1" },
     });
     // Next.js may write to stderr even on success; check for the output directory.
-    if (!existsSync(join(root, "out"))) {
+    if (result.status !== 0 || !existsSync(join(root, "out", "index.html"))) {
       throw new Error("next build completed but out/ directory was not created");
     }
     console.log("\n✓ Build completed successfully!");

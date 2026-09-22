@@ -9,7 +9,7 @@ const dynamicImport = new Function(
 
 export function loadPdfJs(): Promise<any> {
   if (!pdfModule) {
-    pdfModule = dynamicImport("/vendor/pdf.mjs");
+    pdfModule = dynamicImport("/vendor/pdf.mjs").then(module=>{module.GlobalWorkerOptions.workerSrc="/vendor/pdf.worker.min.mjs";return module}).catch(error=>{pdfModule=null;throw error});
   }
   return pdfModule;
 }

@@ -1,48 +1,30 @@
 # Papery 阅读器
 
-面向 Windows 与 Android 的跨端阅读器前端，支持 TXT、EPUB、PDF。当前项目可直接作为网站运行，也保留了迁移至 Tauri 2 WebView 的清晰边界。
+Windows / Android 本地阅读器，支持 EPUB、PDF、TXT。书籍和阅读数据保存在本机 IndexedDB，可导入导出备份，也可配置 Google Drive 同步。
 
-## 已实现
+## 运行与构建
 
-- TXT 分页阅读、EPUB 排版渲染、PDF Canvas 渲染
-- 鼠标点击、键盘方向键 / PageUp / PageDown / Space 与移动端横向手势翻页
-- 字号、行距、暖纸 / 明亮 / 夜间主题调节
-- 书库、分类、书名作者搜索、阅读进度、书签、划线与笔记界面
-- 阅读时长、阅读字数、阅读天数、类型分布等统计界面
-- IndexedDB 保存本地书籍文件；D1 保存书籍、进度、笔记、偏好与阅读会话；R2 保存原始文件
-- 标题栏、菜单、弹窗、下拉、滑块、滚动条、进度条全部自定义
-- 桌面一屏式布局与 Android 窄屏响应式布局
+需要 Node.js 22.13+。安装依赖：`npm install`；开发预览：`npm run dev`；类型检查：`npm run typecheck`；回归测试：`npm test`；生成静态前端：`npm run build`。
 
-## 本地运行
+Windows 安装包：`npx tauri build --bundles nsis`。Android：配置 Java、Android SDK、NDK 后执行 `npx tauri android build --apk --target aarch64 --ci`。原生构建默认重建前端，只有明确设置 PAPERY_PREBUILT=1 才复用 out。
 
-环境要求：Node.js 22.13 或更高版本。
+## 使用
 
-```bash
-npm install
-npm run dev
-```
+- EPUB / TXT 分页模式：键盘方向键、PageUp / PageDown、空格、左右区域点击及鼠标滚轮翻页；手机使用横向滑动。中间区域点击切换工具栏，右上角保留明确的工具栏按钮。
+- 滚动模式和 PDF 使用连续滚动。PDF 显示实际页码；可重排的 EPUB / TXT 显示阅读位置。
+- 优先提取书本封面，PDF 使用首页；没有封面时显示文字封面。
+- Google Drive 当前为自行部署登录服务的接入方式，没有默认公共服务；详见 [接入说明](docs/Google-Drive-接入.md) 和 [服务部署步骤](sync-service/README.md)。客户端密钥只配置在服务端。
 
-生产构建：
+## 文件
 
-```bash
-npm run build
-```
+- app/：书库、阅读内核、本地存储与同步。
+- sync-service/：Google 登录服务、Docker Compose 和配置模板。
+- tests/books/：人工测试样书，不包含在安装包中。
+- patches/：阅读引擎修复，安装依赖时自动应用。
+- releases/0.1.4/：本次 EXE、APK 和交付说明。
+- docs/目录说明.md：目录用途与整理范围。
+- db/、drizzle/、worker/：保留的网页后端代码；原生阅读器默认使用本机存储。
 
-## 代码结构
+## 0.1.4 首次启动与同步说明
 
-- `app/page.tsx`：书库、阅读、笔记、数据分析及主要交互
-- `app/components/DocumentReader.tsx`：TXT / EPUB / PDF 阅读内核
-- `app/lib/local-library.ts`：IndexedDB 本地书库
-- `app/api/library/route.ts`：进度、笔记、偏好、会话持久化接口
-- `app/api/files/route.ts`：书籍文件上传与读取接口
-- `db/schema.ts`：D1 数据表结构
-- `drizzle/`：数据库迁移文件
-
-## Tauri 2 接入说明
-
-前端无需重做。将构建产物接入 Tauri 后，建议仅替换两层能力：
-
-1. 使用 `tauri-plugin-sql` 替换 D1 接口，实现 SQLite 离线持久化。
-2. 使用 Tauri 文件系统 API 替换 R2 上传，将原始书籍保存到应用数据目录。
-
-阅读内核、界面组件、键盘与手势交互可直接复用。桌面窗口按钮可在 Tauri 中绑定 `minimize`、`toggleMaximize` 与 `close` 命令。
+新安装默认昵称“读者”、无头像、空书库，不生成示例书。偏好设置提供个人资料入口；现有用户数据不会因升级而清空。数据备份下方包含 Google 客户端、JavaScript 来源、测试用户、Drive API 的配置流程，并明确区分网页授权与当前 EXE / APK 的登录服务回调方式。

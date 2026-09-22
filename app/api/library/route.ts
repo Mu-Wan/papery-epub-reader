@@ -1,8 +1,11 @@
+export const dynamic = "force-static";
+
 function owner(request: Request) {
   return request.headers.get("x-papery-device")?.slice(0, 80) || "demo-device";
 }
 
 export async function GET(request: Request) {
+  if (process.env.PAPERY_STATIC_BUILD === "1") return Response.json({ books: [], annotations: [], sessions: [], preferences: null });
   const { env } = await import("cloudflare:workers");
   const deviceId = owner(request);
   const [books, annotations, sessions, preferences] = await env.DB.batch([
@@ -15,11 +18,12 @@ export async function GET(request: Request) {
     books: books.results,
     annotations: annotations.results,
     sessions: sessions.results,
-    preferences: preferences.results[0] ? JSON.parse(String(preferences.results[0].value)) : null,
+    preferences: preferences.results[0] ? JSON.parse(String((preferences.results[0] as {value:string}).value)) : null,
   });
 }
 
 export async function POST(request: Request) {
+  if (process.env.PAPERY_STATIC_BUILD === "1") return Response.json({ ok: true });
   const { env } = await import("cloudflare:workers");
   const deviceId = owner(request);
   const body = await request.json() as Record<string, unknown>;

@@ -96,7 +96,7 @@ export const defaultAppPreferences: AppPreferences = {
   appTheme: "light",
   density: "comfortable",
   startPage: "library",
-  autoSync: true,
-  profileName: "嘉洛",
+  autoSync: false,
+  profileName: "读者",
   avatarDataUrl: "",
 };

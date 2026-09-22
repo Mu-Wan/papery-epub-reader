@@ -60,3 +60,9 @@ src-tauri/gen/android/app/build/
 src-tauri/gen/android/build/
 src-tauri/gen/android/buildSrc/build/
 src-tauri/gen/android/gradle/
+/output/
+/.playwright-cli/
+/releases/
+/tests/books/
+/.qoder/
+/.openai/

@@ -23,6 +23,9 @@ android {
         targetSdk = 36
         versionCode = tauriProperties.getProperty("tauri.android.versionCode", "1").toInt()
         versionName = tauriProperties.getProperty("tauri.android.versionName", "1.0")
+        ndk {
+            abiFilters += "arm64-v8a"
+        }
     }
 
     // Debug 签名配置（使 release APK 可安装）
@@ -35,26 +38,12 @@ android {
         }
     }
 
-    // Split per ABI —— 只构建 arm64-v8a，并生成 universal APK
-    splits {
-        abi {
-            isEnable = true
-            reset()
-            include("arm64-v8a")
-            isUniversalApk = true
-        }
-    }
-
     buildTypes {
         getByName("debug") {
             manifestPlaceholders["usesCleartextTraffic"] = "true"
             isDebuggable = true
             isJniDebuggable = true
             isMinifyEnabled = false
-            packaging {
-                jniLibs.keepDebugSymbols.add("*/arm64-v8a/*.so")
-                jniLibs.keepDebugSymbols.add("*/armeabi-v7a/*.so")
-            }
         }
         getByName("release") {
             isMinifyEnabled = true
@@ -65,6 +54,11 @@ android {
                     .plus(getDefaultProguardFile("proguard-android-optimize.txt"))
                     .toList().toTypedArray()
             )
+            packaging {
+                jniLibs.excludes.add("lib/x86/**")
+                jniLibs.excludes.add("lib/x86_64/**")
+                jniLibs.excludes.add("lib/armeabi-v7a/**")
+            }
         }
     }
     kotlinOptions {
@@ -91,9 +85,3 @@ dependencies {
 }
 
 apply(from = "tauri.build.gradle.kts")
-
-// 在 Tauri 插件配置完成后，强制 ndk abiFilters 只保留 arm64-v8a，与 splits 保持一致
-project.afterEvaluate {
-    android.defaultConfig.ndk.abiFilters.clear()
-    android.defaultConfig.ndk.abiFilters.add("arm64-v8a")
-}

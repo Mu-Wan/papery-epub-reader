@@ -9,8 +9,8 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const root = join(__dirname, "..");
 const outIndex = join(root, "out", "index.html");
 
-if (existsSync(outIndex)) {
-  console.log("✓ out/index.html already exists, skipping next build (static export).");
+if (process.env.PAPERY_PREBUILT === "1" && existsSync(outIndex)) {
+  console.log("Using explicitly prepared frontend export.");
 } else {
   console.log("out/ not found, running full next build...");
   execSync("node scripts/tauri-build.mjs", { cwd: root, stdio: "inherit" });

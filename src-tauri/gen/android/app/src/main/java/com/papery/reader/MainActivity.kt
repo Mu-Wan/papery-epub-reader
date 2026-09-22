@@ -16,7 +16,7 @@ class MainActivity : TauriActivity() {
     webView.settings.apply {
       // Enable hardware-accelerated rendering
       allowFileAccess = false
-      allowContentAccess = false
+      allowContentAccess = true
       // Cache optimization
       cacheMode = android.webkit.WebSettings.LOAD_DEFAULT
       // Disable unnecessary features for reader app
