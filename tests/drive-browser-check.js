@@ -1,3 +1,4 @@
+// Run drive-login-browser-check.js first, with the two local test books imported.
 async (page) => {
   const snapshots = new Map();
   let incoming = [], pendingName = '', fail = false, chunks = 0;
@@ -19,9 +20,6 @@ async (page) => {
     }
     return route.fulfill({status:204,headers});
   });
-  await page.getByText('临时授权接入（用于联调）',{exact:true}).click();
-  await page.getByLabel('临时访问令牌',{exact:true}).fill('papery-local-integration-test');
-  await page.getByRole('button',{name:'使用临时授权',exact:true}).click();
   await page.getByRole('button',{name:'立即同步',exact:true}).click();
   await page.waitForFunction(()=>document.querySelector('.syncStatus')?.textContent.includes('同步完成'));
   const first=[...snapshots.values()][0].data;

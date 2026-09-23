@@ -1,6 +1,6 @@
 {
   "productName": "Papery Reader",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "identifier": "com.papery.reader",
   "build": {
     "beforeDevCommand": "",
@@ -20,7 +20,7 @@
       }
     ],
     "security": {
-      "csp": "default-src 'self'; style-src 'self' 'unsafe-inline' blob:; img-src 'self' data: blob:; media-src 'self' blob:; script-src 'self' 'unsafe-inline' 'unsafe-eval'; worker-src 'self' blob:; font-src 'self' data: blob:; connect-src 'self' blob: data: ipc: http://ipc.localhost http://localhost:8788 http://127.0.0.1:8788 https:; child-src 'self' blob:; frame-src 'self' blob:"
+      "csp": "default-src 'self'; style-src 'self' 'unsafe-inline' blob:; img-src 'self' data: blob:; media-src 'self' blob:; script-src 'self' 'unsafe-inline' 'unsafe-eval'; worker-src 'self' blob:; font-src 'self' data: blob:; connect-src 'self' blob: data: ipc: http://ipc.localhost https:; child-src 'self' blob:; frame-src 'self' blob:"
     }
   },
   "bundle": {
@@ -37,6 +37,23 @@
       "nsis": {
         "installMode": "currentUser"
       }
+    }
+  },
+  "plugins": {
+    "deep-link": {
+      "desktop": {
+        "schemes": [
+          "papery"
+        ]
+      },
+      "mobile": [
+        {
+          "scheme": [
+            "papery"
+          ],
+          "appLink": false
+        }
+      ]
     }
   }
 }

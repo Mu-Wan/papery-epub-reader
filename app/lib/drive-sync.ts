@@ -3,7 +3,7 @@ import { mergeSnapshots, validateSnapshot, type SyncSnapshot } from "./sync-merg
 
 const API = "https://www.googleapis.com/drive/v3";
 let running: Promise<{ books: number; notes: number }> | null = null;
-export type DriveConfig = { clientId: string; authUrl: string; autoSync: boolean };
+export type DriveConfig = { clientId: string; autoSync: boolean };
 let accessToken = "";
 let expiresAt = 0;
 export function connectDriveToken(token: string, seconds = 3500) { accessToken=token.trim(); expiresAt=Date.now()+seconds*1000; }

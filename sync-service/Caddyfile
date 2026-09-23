@@ -1,3 +1,0 @@
-{$SYNC_DOMAIN} {
-    reverse_proxy auth:8788
-}
