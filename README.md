@@ -8,12 +8,12 @@
 
 | 平台 | 安装文件 | 要求 |
 | --- | --- | --- |
-| Windows | [EXE 安装包](https://github.com/Mu-Wan/papery-epub-reader/releases/download/papery-v0.1.6/Papery-Reader-0.1.6-Windows-x64-Setup.exe) | x64，使用 WebView2 |
-| Android | [APK 安装包](https://github.com/Mu-Wan/papery-epub-reader/releases/download/papery-v0.1.6/Papery-Reader-0.1.6-Android-arm64.apk) | Android 7.0+，arm64 |
+| Windows | [EXE 安装包](https://github.com/Mu-Wan/papery-epub-reader/releases/download/papery-v0.1.7/Papery-Reader-0.1.7-Windows-x64-Setup.exe) | x64，使用 WebView2 |
+| Android | [APK 安装包](https://github.com/Mu-Wan/papery-epub-reader/releases/download/papery-v0.1.7/Papery-Reader-0.1.7-Android-arm64.apk) | Android 7.0+，arm64 |
 
-Android 包使用项目现有测试签名。安装文件与 SHA256 校验值在 [Release](https://github.com/Mu-Wan/papery-epub-reader/releases/tag/papery-v0.1.6) 中提供。
+Android 包使用项目现有测试签名。安装文件与 SHA256 校验值在 [Release](https://github.com/Mu-Wan/papery-epub-reader/releases/tag/papery-v0.1.7) 中提供。
 
-0.1.6 为干净安装版本：安装包不包含示例书、测试数据、网页 API 路由、客户端密钥或预设个人昵称；发布页同时提供 `SECURITY-AUDIT.md` 与 `SHA256.txt`。
+0.1.7 移除了旧版说明式 Google 授权页，改用专门的 Google Drive 连接入口，并整理了同步接入说明。首次安装保持空书库与空昵称；不打包默认客户端 ID、客户端密钥、示例书籍或网页 API 路由。发布页提供静态安全检查记录与 SHA256 校验值。
 
 ## 阅读与书库
 
@@ -40,7 +40,7 @@ EPUB / TXT 显示随内容定位的“阅读位置”；PDF 显示实际页码�
 2. 在“已获授权的 JavaScript 来源”添加 **`https://mu-wan.github.io`**。只填来源，不加路径；本方案无需重定向 URI。
 3. Google Auth Platform → 目标对象（Audience），测试状态下添加自己的 Google 账号为测试用户；数据访问权限添加 `https://www.googleapis.com/auth/drive.appdata`。
 4. 在同一项目启用 [Google Drive API](https://console.cloud.google.com/marketplace/product/google/drive.googleapis.com)。
-5. 将客户端 ID 填入阅读器，点击“使用 Google 连接”，在系统浏览器授权，再点击“返回 Papery 完成连接”。浏览器未返回时可粘贴页面提供的加密连接码。
+5. 将客户端 ID 填入阅读器，点击“使用 Google 连接”，浏览器会尝试直接打开 Google 官方授权窗口；若被拦截，再点 Papery 连接页中的“继续到 Google”。授权后会尝试自动返回；也可点“返回 Papery”或粘贴加密连接码。
 6. 先在有书的设备同步，再在另一设备使用同一客户端 ID 和 Google 账号同步。
 
 授权期间保持应用及同步面板打开。关闭应用或授权过期后需重新连接。书库存放在 Drive 的应用专用隐藏空间；完整快照同步会增加大型 PDF 书库的流量。首次同步前可先导出本地备份。
@@ -68,7 +68,7 @@ Android 安装包：`npx tauri android build --apk --target aarch64 --ci`。
 ## 项目结构
 
 - `app/`：界面、阅读内核、本地存储和同步。
-- `public/drive-auth.html`、`drive-auth.mjs`：GitHub Pages 托管的静态 Google 授权页。
+- `public/google-drive-connect.html`、`google-drive-connect.mjs`：GitHub Pages 托管的静态 Google 授权页。
 - `site/`：项目介绍与下载首页。
 - `src-tauri/`：Windows、Android 工程。
 - `patches/`：EPUB 引擎兼容补丁，安装依赖时自动应用。
@@ -77,7 +77,7 @@ Android 安装包：`npx tauri android build --apk --target aarch64 --ci`。
 
 ## 当前验证范围
 
-前端生产构建、类型检查及 7 项核心测试通过；浏览器完成了空书库、授权结果加密回传与模拟 Drive 上传、下载、失败保留数据的验证。真实 Google 账号授权、云端跨设备同步仍需配置后验收。最终 EXE / APK 已构建，未进行安装后的完整验收。
+0.1.7 安装包按用户要求直接提供自行安装体验。Google 真实账号登录及跨设备同步需要使用者完成 Google Cloud 配置后验证。
 
 ## 反馈
 

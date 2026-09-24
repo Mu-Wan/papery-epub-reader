@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="referrer" content="no-referrer">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; base-uri 'none'; object-src 'none'; form-action 'none'; script-src 'self' https://accounts.google.com/gsi/client; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' https://accounts.google.com https://oauth2.googleapis.com; frame-src https://accounts.google.com">
+  <meta name="theme-color" content="#f4f5f1">
+  <link rel="icon" href="./favicon.svg" type="image/svg+xml">
+  <title>连接 Google Drive · Papery</title>
+  <style>
+    :root{color-scheme:light;--ink:#202a25;--muted:#68716b;--line:#dfe4de;--paper:#f4f5f1;--surface:#fff;--green:#315b48;--green-dark:#254837;--soft:#edf2ed;--warn:#875c2b;--warn-bg:#f8f0e5;--ok:#2d6145;--ok-bg:#e9f3ec}
+    *{box-sizing:border-box}
+    html{min-height:100%;background:var(--paper)}
+    body{margin:0;min-height:100svh;color:var(--ink);font:15px/1.65 Inter,-apple-system,BlinkMacSystemFont,"Segoe UI","Microsoft YaHei",sans-serif;background:linear-gradient(118deg,#f4f5f1 0%,#f7f7f4 56%,#eef2ed 100%)}
+    .page{width:min(100% - 40px,960px);min-height:100svh;margin:0 auto;display:flex;flex-direction:column}
+    .topbar{height:78px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid rgba(56,76,63,.12)}
+    .brand{display:flex;align-items:center;gap:11px;color:var(--ink);text-decoration:none;font-weight:720;letter-spacing:.015em}
+    .brandMark{width:32px;height:32px;display:grid;place-items:center;color:#fff;background:var(--green);border-radius:9px}
+    .brandMark svg{width:19px;height:19px}
+    .brandName{font-size:17px}
+    .secure{display:flex;align-items:center;gap:7px;color:#5b655e;font-size:12px}
+    .secure svg{width:15px;height:15px;color:var(--green)}
+    .layout{flex:1;display:grid;grid-template-columns:minmax(0,1.12fr) minmax(330px,.88fr);align-items:center;gap:clamp(38px,8vw,100px);padding:55px 4px 64px}
+    .story{max-width:510px}
+    .eyebrow{display:flex;align-items:center;gap:10px;color:#59645d;font-size:11px;line-height:1.3;font-weight:760;letter-spacing:.17em;text-transform:uppercase}
+    .eyebrow::before{content:"";width:26px;height:1px;background:#a5b5a8}
+    h1{max-width:500px;margin:17px 0 16px;font-family:Georgia,"Noto Serif SC","Songti SC",serif;font-size:clamp(34px,3.45vw,42px);font-weight:500;letter-spacing:-.035em;line-height:1.19}
+    .lead{max-width:430px;margin:0;color:#5e6861;font-size:16px}
+    .bookline{height:128px;max-width:380px;margin:38px 0 0;position:relative;border-bottom:1px solid #d4ddd4}
+    .bookline::before,.bookline::after{content:"";position:absolute;bottom:0;width:45%;height:85px;border:1px solid #c8d4ca;border-bottom:0;background:rgba(255,255,255,.25)}
+    .bookline::before{left:0;border-radius:52% 8px 0 0 / 12% 8px 0 0;transform:skewY(-2deg);transform-origin:right bottom}
+    .bookline::after{right:0;border-radius:8px 52% 0 0 / 8px 12% 0 0;transform:skewY(2deg);transform-origin:left bottom}
+    .bookfold{position:absolute;z-index:1;left:50%;bottom:0;width:1px;height:94px;background:#aab9ac}
+    .bookcaption{position:absolute;left:0;bottom:-28px;color:#79847c;font:11px/1.4 ui-monospace,SFMono-Regular,Consolas,monospace;letter-spacing:.04em}
+    .connect{width:100%;max-width:388px;justify-self:end;padding:28px 28px 25px;border:1px solid #dde3dc;background:rgba(255,255,255,.82)}
+    .connectHead{display:flex;align-items:center;gap:12px;margin-bottom:23px}
+    .appIcon{width:42px;height:42px;display:grid;place-items:center;color:var(--green);background:#edf3ed;border:1px solid #dbe7dc;border-radius:12px}
+    .appIcon svg{width:23px;height:23px}
+    .arrow{color:#89958c;font-size:19px}
+    .driveIcon{width:42px;height:42px;display:grid;place-items:center;border:1px solid var(--line);border-radius:12px;background:#fff}
+    .driveIcon svg{width:25px;height:25px}
+    .connect h2{margin:0;font-size:21px;line-height:1.3;letter-spacing:-.02em}
+    .explain{margin:9px 0 20px;color:#5d6860;font-size:13px;line-height:1.65}
+    .permission{display:flex;align-items:flex-start;gap:11px;padding:13px 14px;background:var(--soft);color:#334b3b}
+    .permission svg{width:18px;height:18px;flex:none;margin-top:1px}
+    .permission strong{display:block;font-size:13px}
+    .permission small{display:block;margin-top:3px;color:#637168;font-size:11px;line-height:1.5}
+    #status{min-height:44px;margin:18px 0 10px;padding:10px 12px;color:#5d6860;background:#f6f7f4;font-size:12px;line-height:1.55}
+    #status.warn{color:var(--warn);background:var(--warn-bg)}
+    #status.ok{color:var(--ok);background:var(--ok-bg)}
+    button,.action{width:100%;min-height:48px;display:flex;align-items:center;justify-content:center;gap:11px;padding:11px 16px;border:1px solid var(--green);background:var(--green);color:#fff;text-align:center;text-decoration:none;font:650 14px/1.3 Inter,-apple-system,BlinkMacSystemFont,"Segoe UI","Microsoft YaHei",sans-serif;cursor:pointer;transition:background-color .16s ease,border-color .16s ease,transform .16s ease}
+    button:hover,.action:hover{background:var(--green-dark);border-color:var(--green-dark)}
+    button:active,.action:active{transform:translateY(1px)}
+    button:focus-visible,.action:focus-visible,summary:focus-visible{outline:3px solid #8aa995;outline-offset:3px}
+    button:disabled{opacity:.52;cursor:wait}
+    button svg{width:19px;height:19px;flex:none}
+    button.secondary,.action.secondary{margin-top:10px;color:var(--green);background:transparent;border-color:#c7d5ca}
+    button.secondary:hover,.action.secondary:hover{background:#f1f5f1}
+    .hint{margin:13px 0 0;color:#707a73;text-align:center;font-size:11px;line-height:1.55}
+    #result{margin-top:15px}
+    #code{width:100%;min-height:92px;margin-top:13px;padding:10px;border:1px solid #d7dfd8;background:#fbfcfa;color:#46544a;font:11px/1.55 ui-monospace,SFMono-Regular,Consolas,monospace;overflow-wrap:anywhere;resize:vertical}
+    .help{margin-top:18px;border-top:1px solid var(--line);padding-top:14px;color:#626d65;font-size:12px}
+    .help summary{width:max-content;max-width:100%;color:#4d5e52;font-weight:650;cursor:pointer}
+    .help p{margin:9px 0 0;line-height:1.7}
+    .help code{color:#385844;font:600 11px/1.5 ui-monospace,SFMono-Regular,Consolas,monospace;overflow-wrap:anywhere}
+    .footer{display:flex;justify-content:space-between;gap:14px;padding:18px 4px 22px;border-top:1px solid rgba(56,76,63,.12);color:#778179;font-size:11px}
+    [hidden]{display:none!important}
+    @media(max-width:720px){.page{width:min(100% - 32px,470px)}.topbar{height:64px}.layout{grid-template-columns:1fr;gap:25px;align-content:center;padding:35px 0 38px}.story{max-width:none}.eyebrow{font-size:10px}h1{max-width:420px;margin:12px 0 10px;font-size:clamp(27px,7.8vw,31px)}.lead{font-size:14px}.bookline{display:none}.connect{max-width:none;justify-self:stretch;padding:22px 20px 20px}.connectHead{margin-bottom:16px}.connect h2{font-size:19px}.footer{flex-direction:column;gap:3px;padding-top:13px}}
+    @media(max-width:360px){.page{width:calc(100% - 24px)}.layout{padding-top:25px}.connect{padding:18px 15px}.brandName{font-size:16px}.secure{font-size:11px}h1{font-size:25px}}
+    @media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;transition:none!important}}
+  </style>
+</head>
+<body>
+  <div class="page">
+    <header class="topbar">
+      <a class="brand" href="https://mu-wan.github.io/papery-epub-reader/" aria-label="Papery 阅读器">
+        <span class="brandMark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M5 5.5c2.7-.8 5.1-.2 7 1.5v12c-1.9-1.7-4.3-2.3-7-1.5v-12Zm14 0c-2.7-.8-5.1-.2-7 1.5v12c1.9-1.7 4.3-2.3 7-1.5v-12Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M12 7v12" stroke="currentColor" stroke-width="1.3"/></svg></span>
+        <span class="brandName">Papery</span>
+      </a>
+      <span class="secure"><svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M10 2.5 16 5v4.7c0 3.7-2.5 6.3-6 7.8-3.5-1.5-6-4.1-6-7.8V5l6-2.5Z" stroke="currentColor" stroke-width="1.5"/><path d="m7.3 9.9 1.8 1.8 3.8-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>安全连接</span>
+    </header>
+    <main class="layout">
+      <section class="story" aria-labelledby="page-title">
+        <div class="eyebrow">PAPERY · GOOGLE DRIVE</div>
+        <h1 id="page-title">把书库，带到每台设备。</h1>
+        <p class="lead">连接一次 Google Drive，在不同设备之间接着读，也能带上书签、笔记和排版设置。</p>
+        <div class="bookline" aria-hidden="true"><span class="bookfold"></span><span class="bookcaption">READ HERE · CONTINUE ANYWHERE</span></div>
+      </section>
+      <section class="connect" aria-labelledby="connect-title">
+        <div class="connectHead" aria-hidden="true">
+          <span class="appIcon"><svg viewBox="0 0 24 24" fill="none"><path d="M4.5 5.5c2.8-.8 5.2-.2 7.5 1.4v12c-2.3-1.6-4.7-2.2-7.5-1.4v-12Zm15 0c-2.8-.8-5.2-.2-7.5 1.4v12c2.3-1.6 4.7-2.2 7.5-1.4v-12Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M12 7v12" stroke="currentColor" stroke-width="1.4"/></svg></span>
+          <span class="arrow">→</span>
+          <span class="driveIcon"><svg viewBox="0 0 48 42" aria-label="Google Drive"><path fill="#00832d" d="m15.3 2.5 8.1 0-13.5 23.4-8.1 0z"/><path fill="#0066da" d="m1.8 25.9 8.1 0 6.7 11.6-8.1 0z"/><path fill="#ea4335" d="m15.3 2.5 8.1 0 13.5 23.4-8.1 0z"/><path fill="#2684fc" d="m8.5 37.5 6.8-11.6h21.6l-6.8 11.6z"/><path fill="#00ac47" d="m30.1 25.9 6.8-11.7 6.7 11.7-6.7 11.6z"/><path fill="#ffba00" d="m23.4 2.5 8.1 0 12.1 21-6.7 0z"/></svg></span>
+        </div>
+        <h2 id="connect-title">确认连接 Google Drive</h2>
+        <p class="explain">继续后会打开 Google 官方授权窗口。账号密码由 Google 处理，Papery 不会接收或保存。</p>
+        <div class="permission">
+          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 3 19 6v5.5c0 4.1-2.9 7.1-7 9-4.1-1.9-7-4.9-7-9V6l7-3Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="m9 12 2 2 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <span><strong>仅访问 Papery 的应用专用空间</strong><small>用于同步本书库，不会读取 Google Drive 中的其他文件。</small></span>
+        </div>
+        <p id="status" role="status" aria-live="polite">正在准备安全连接…</p>
+        <button id="connect" type="button" disabled>
+          <svg viewBox="0 0 48 48" aria-hidden="true"><path fill="#4285F4" d="M43.6 24.5c0-1.4-.1-2.8-.4-4.1H24v7.8h11c-.5 2.5-1.9 4.6-4.1 6v5h6.6c3.9-3.6 6.1-8.8 6.1-14.7Z"/><path fill="#34A853" d="M24 44c5.5 0 10.2-1.8 13.6-4.8l-6.6-5c-1.8 1.2-4 1.9-7 1.9-5.4 0-10-3.7-11.7-8.6h-6.8v5.2A20.5 20.5 0 0 0 24 44Z"/><path fill="#FBBC05" d="M12.3 27.5a12.3 12.3 0 0 1 0-7v-5.2H5.5a20.5 20.5 0 0 0 0 17.4l6.8-5.2Z"/><path fill="#EA4335" d="M24 11.9c3 0 5.7 1 7.8 3.1l5.9-5.9C34.2 5.7 29.5 4 24 4A20.5 20.5 0 0 0 5.5 15.3l6.8 5.2c1.7-4.9 6.3-8.6 11.7-8.6Z"/></svg>
+          <span>继续到 Google</span>
+        </button>
+        <p id="main-hint" class="hint">Google 窗口若没有自动出现，点上方按钮继续。授权后 Papery 会尝试自动返回。</p>
+        <section id="result" hidden>
+          <a id="return" class="action secondary" href="#">返回 Papery 完成连接</a>
+          <p class="hint">浏览器没有打开应用时，可复制加密连接码并粘贴回阅读器。</p>
+          <textarea id="code" readonly aria-label="加密连接码"></textarea>
+          <button id="copy" class="secondary" type="button">复制连接码</button>
+        </section>
+        <details class="help">
+          <summary>授权窗口没有打开？</summary>
+          <p>请允许浏览器弹出窗口，然后再点一次“继续到 Google”。若看到来源不匹配，请在 Google Cloud 将已获授权的 JavaScript 来源设为 <code>https://mu-wan.github.io</code>，只填域名，不加项目路径。</p>
+        </details>
+      </section>
+    </main>
+    <footer class="footer"><span>Papery 阅读器 · 可选的跨设备同步</span><span>阅读数据由本地书库与本人 Google 账号管理</span></footer>
+  </div>
+  <script type="module" src="./google-drive-connect.mjs?v=0.1.7"></script>
+</body>
+</html>

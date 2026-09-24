@@ -1,6 +1,6 @@
 {
   "name": "papery-reader",
-  "version": "0.1.6",
+  "version": "0.1.7",
   "private": true,
   "engines": {
     "node": ">=22.13.0"
