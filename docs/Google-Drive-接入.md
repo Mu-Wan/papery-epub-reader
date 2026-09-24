@@ -7,7 +7,7 @@
 3. Google Auth Platform → 目标对象（Audience），测试状态下把实际登录账号加入测试用户。在数据访问权限添加 `https://www.googleapis.com/auth/drive.appdata`。
 4. 在同一项目启用 Google Drive API：https://console.cloud.google.com/marketplace/product/google/drive.googleapis.com 。
 5. 复制客户端 ID（以 .apps.googleusercontent.com 结尾），在 Papery → 偏好设置 → 数据备份下方打开 Google Drive 同步，填写 ID。
-6. 点击“使用 Google 连接”，系统浏览器打开固定授权页面：https://mu-wan.github.io/papery-epub-reader/drive-auth.html 。点击“选择 Google 账号”，允许后点击“返回 Papery 完成连接”。
+6. 点击“使用 Google 连接”，系统浏览器打开 Papery 授权页面：https://mu-wan.github.io/papery-epub-reader/drive-auth.html 。点击“继续使用 Google 账号”，允许后点击“返回 Papery 完成连接”。
 7. 浏览器未返回时，复制页面提供的加密连接码，粘贴到阅读器并点“完成连接”。授权期间保持应用及同步面板打开；超过 10 分钟后重新连接。
 8. 先在有书的设备点“立即同步”，另一设备使用同一客户端 ID、同一 Google 账号连接并同步。
 

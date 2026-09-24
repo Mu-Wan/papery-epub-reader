@@ -1,4 +1,4 @@
-export const DRIVE_AUTH_PAGE="https://mu-wan.github.io/papery-epub-reader/drive-auth.html";
+export const DRIVE_AUTH_PAGE="https://mu-wan.github.io/papery-epub-reader/drive-auth.html?v=0.1.6";
 export const DRIVE_AUTH_ORIGIN="https://mu-wan.github.io";
 const encode=(bytes:Uint8Array)=>btoa(String.fromCharCode(...bytes)).replaceAll('+','-').replaceAll('/','_').replace(/=+$/,'');
 const decode=(text:string)=>Uint8Array.from(atob(text.replaceAll('-','+').replaceAll('_','/')),c=>c.charCodeAt(0));

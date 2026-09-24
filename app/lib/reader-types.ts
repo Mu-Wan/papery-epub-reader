@@ -97,6 +97,6 @@ export const defaultAppPreferences: AppPreferences = {
   density: "comfortable",
   startPage: "library",
   autoSync: false,
-  profileName: "读者",
+  profileName: "",
   avatarDataUrl: "",
 };

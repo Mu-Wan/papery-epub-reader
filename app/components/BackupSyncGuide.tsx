@@ -1,16 +1,23 @@
 "use client";
 import { DRIVE_AUTH_ORIGIN, DRIVE_AUTH_PAGE } from "../lib/drive-auth";
+
 export function BackupSyncGuide({onConnect}:{onConnect?:()=>void}) {
- return <section className="backupSyncGuide"><h3>Google Drive 同步如何配置</h3><p>只需配置一次 Google 项目，然后在各设备填写同一个客户端 ID。无需客户端密钥，也不需要部署服务。</p><ol>
- <li>打开 <a href="https://console.cloud.google.com/auth/clients" target="_blank" rel="noreferrer">Google Cloud → 客户端</a>，选择项目，创建“Web 应用”客户端。</li>
- <li>在“已获授权的 JavaScript 来源”添加下方地址并保存。只填写来源，不附带 /papery-epub-reader/ 或其他路径；本方案不需要填写重定向 URI。</li></ol>
- <div className="syncCallback"><span>复制到“已获授权的 JavaScript 来源”</span><code>{DRIVE_AUTH_ORIGIN}</code><button className="uiButton full" onClick={async event=>{const button=event.currentTarget;try{await navigator.clipboard.writeText(DRIVE_AUTH_ORIGIN);button.textContent="已复制"}catch{window.prompt("请复制此地址",DRIVE_AUTH_ORIGIN)}}}>复制允许来源</button></div>
- <ol start={3}><li>Google Auth Platform → 目标对象（Audience），测试状态下将实际登录的 Google 账号加入“测试用户”。在“数据访问权限”添加 <code>https://www.googleapis.com/auth/drive.appdata</code>。</li>
- <li>在同一项目打开 <a href="https://console.cloud.google.com/marketplace/product/google/drive.googleapis.com" target="_blank" rel="noreferrer">Google Drive API</a>，点击“启用”。</li>
- <li>复制客户端 ID（以 .apps.googleusercontent.com 结尾），填写到阅读器“Google Drive 同步”中。客户端密钥不用填写，也不用发给任何人。</li>
- <li>点击“使用 Google 连接”，在系统浏览器的授权页点击“选择 Google 账号”，同意后点击“返回 Papery 完成连接”。若浏览器没有返回，复制页面上的加密连接码，粘贴到阅读器中。授权期间请保持阅读器和同步面板打开。</li>
- <li>先在有书的设备点“立即同步”，再在另一设备使用同一客户端 ID、同一 Google 账号连接并同步。</li></ol>
- <p>授权页面：<a href={DRIVE_AUTH_PAGE} target="_blank" rel="noreferrer">Papery Google 授权页</a>。Windows、Android 均通过该固定页面授权，不需要登记 tauri.localhost 或手机地址。</p>
- <details><summary>连接失败怎么办</summary><p>提示 origin_mismatch：核对允许来源是否完全一致，保存后稍等再试。提示 access_denied：检查测试用户及授权权限。弹窗打不开：允许浏览器弹窗。无法加载 Google：检查网络。关闭应用、关闭同步面板或超过 10 分钟后，应重新发起授权。令牌过期后重新连接；云端书籍在应用专用隐藏空间中，不显示在普通文件列表。</p></details>
- {onConnect&&<button className="uiButton full" onClick={onConnect}>打开 Google Drive 同步</button>}</section>;
+  const copyOrigin=async(event:React.MouseEvent<HTMLButtonElement>)=>{
+    const button=event.currentTarget;
+    try{await navigator.clipboard.writeText(DRIVE_AUTH_ORIGIN);button.textContent="已复制"}
+    catch{window.prompt("请复制此地址",DRIVE_AUTH_ORIGIN)}
+  };
+  return <section className="backupSyncGuide">
+    <h3>Google Drive 同步</h3>
+    <p className="guideLead">只需设置一次，之后在每台设备使用同一个客户端 ID 和 Google 账号即可。客户端密钥不用填写，也不要发送给任何人。</p>
+    <div className="guideSteps">
+      <article><b>1</b><div><strong>创建 Google Web 客户端</strong><p>打开 <a href="https://console.cloud.google.com/auth/clients" target="_blank" rel="noreferrer">Google Cloud → 客户端</a>，创建“Web 应用”。在“已获授权的 JavaScript 来源”中填写：</p><div className="syncCallback"><code>{DRIVE_AUTH_ORIGIN}</code><button className="uiButton" onClick={copyOrigin}>复制</button></div><p className="guideHint">只填这一行，不要加 <code>/papery-epub-reader</code> 路径，也不要加结尾斜杠。</p></div></article>
+      <article><b>2</b><div><strong>完成 Google 项目设置</strong><p>在 Audience 中把自己的 Google 账号加入“测试用户”；在“数据访问权限”添加 <code>drive.appdata</code>；再到 <a href="https://console.cloud.google.com/marketplace/product/google/drive.googleapis.com" target="_blank" rel="noreferrer">Google Drive API</a> 页面点击“启用”。</p><p className="guideHint">只需要客户端 ID，不需要客户端密钥；本方案不需要填写重定向 URI。</p></div></article>
+      <article><b>3</b><div><strong>回到 Papery 连接</strong><p>把以 <code>.apps.googleusercontent.com</code> 结尾的客户端 ID 填入上方，点击“使用 Google 连接”，在浏览器中选择账号并授权。授权完成后返回 Papery；另一台设备重复连接，再点击“立即同步”。</p></div></article>
+    </div>
+    <details><summary>遇到“来源不匹配”怎么办？</summary><p>Google 要求来源完全等于 <code>https://mu-wan.github.io</code>。如果填成了 <code>https://mu-wan.github.io/papery-epub-reader</code>、带了结尾斜杠，或只填了 localhost，都会失败。修改 Google Cloud 后重新点击“使用 Google 连接”即可。</p></details>
+    <p className="guideHint">授权页是 Papery 为桌面端和手机端准备的浏览器页面，会继续打开 Google 官方授权窗口；它不保存密码或令牌。关闭应用、同步面板或等待超过 10 分钟后，需要重新发起连接。</p>
+    <p className="guideHint"><a href={DRIVE_AUTH_PAGE} target="_blank" rel="noreferrer">打开授权页说明</a></p>
+    {onConnect&&<button className="uiButton full" onClick={onConnect}>打开 Google Drive 同步</button>}
+  </section>;
 }

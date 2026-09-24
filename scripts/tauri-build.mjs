@@ -1,4 +1,4 @@
-import { rename, mkdir, rm, readFile, writeFile } from "node:fs/promises";
+import { rm, readFile, writeFile } from "node:fs/promises";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { execSync, spawnSync } from "node:child_process";
@@ -6,30 +6,7 @@ import { existsSync } from "node:fs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const root = join(__dirname, "..");
-const apiDir = join(root, "app", "api");
-const tempDir = join(root, ".api-temp-backup");
 const viteConfigPath = join(root, "vite.config.ts");
-
-async function moveApiOut() {
-  if (!existsSync(apiDir)) {
-    console.log("No app/api/ directory found, skipping move.");
-    return false;
-  }
-  if (existsSync(tempDir)) {
-    console.warn("Warning: .api-temp-backup already exists, removing stale backup...");
-    await rename(tempDir, tempDir + ".old." + Date.now());
-  }
-  await rename(apiDir, tempDir);
-  console.log("✓ Moved app/api/ to .api-temp-backup/");
-  return true;
-}
-
-async function moveApiBack() {
-  if (existsSync(tempDir)) {
-    await rename(tempDir, apiDir);
-    console.log("✓ Restored app/api/ from .api-temp-backup/");
-  }
-}
 
 async function patchViteConfig() {
   let content = await readFile(viteConfigPath, "utf-8");
@@ -77,7 +54,7 @@ async function restoreViteConfig(wasPatched) {
 }
 
 async function main() {
-  // Step 0: Clean .next cache to avoid stale API route artifacts
+  // Step 0: Clean .next cache so every static package starts from a fresh build
   const nextCacheDir = join(root, ".next");
   if (existsSync(nextCacheDir)) {
     await rm(nextCacheDir, { recursive: true, force: true });
@@ -95,10 +72,7 @@ async function main() {
   console.log("Copying vendor files...");
   execSync("node scripts/copy-vendor.mjs", { cwd: root, stdio: "inherit" });
 
-  // Step 2: Move API routes out
-  const moved = await moveApiOut();
-
-  // Step 2.5: Patch vite.config.ts to skip cloudflare plugin
+  // Step 2: Patch vite.config.ts to skip cloudflare plugin
   const vitePatched = await patchViteConfig();
 
   try {
@@ -115,19 +89,12 @@ async function main() {
     }
     console.log("\n✓ Build completed successfully!");
   } finally {
-    // Step 4: Always restore API routes and vite config
-    if (moved) {
-      await moveApiBack();
-    }
+    // Step 4: Always restore the Vite config
     await restoreViteConfig(vitePatched);
   }
 }
 
 main().catch(async (err) => {
-  // Ensure API routes are restored even on error
-  if (existsSync(tempDir)) {
-    await moveApiBack().catch(() => {});
-  }
   console.error("Build failed:", err.message);
   process.exit(1);
 });

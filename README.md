@@ -8,10 +8,12 @@
 
 | 平台 | 安装文件 | 要求 |
 | --- | --- | --- |
-| Windows | [EXE 安装包](https://github.com/Mu-Wan/papery-epub-reader/releases/download/papery-v0.1.5/Papery-Reader-0.1.5-Windows-x64-Setup.exe) | x64，使用 WebView2 |
-| Android | [APK 安装包](https://github.com/Mu-Wan/papery-epub-reader/releases/download/papery-v0.1.5/Papery-Reader-0.1.5-Android-arm64.apk) | Android 7.0+，arm64 |
+| Windows | [EXE 安装包](https://github.com/Mu-Wan/papery-epub-reader/releases/download/papery-v0.1.6/Papery-Reader-0.1.6-Windows-x64-Setup.exe) | x64，使用 WebView2 |
+| Android | [APK 安装包](https://github.com/Mu-Wan/papery-epub-reader/releases/download/papery-v0.1.6/Papery-Reader-0.1.6-Android-arm64.apk) | Android 7.0+，arm64 |
 
-Android 包使用项目现有测试签名。安装文件与 SHA256 校验值在 [Release](https://github.com/Mu-Wan/papery-epub-reader/releases/tag/papery-v0.1.5) 中提供。
+Android 包使用项目现有测试签名。安装文件与 SHA256 校验值在 [Release](https://github.com/Mu-Wan/papery-epub-reader/releases/tag/papery-v0.1.6) 中提供。
+
+0.1.6 为干净安装版本：安装包不包含示例书、测试数据、网页 API 路由、客户端密钥或预设个人昵称；发布页同时提供 `SECURITY-AUDIT.md` 与 `SHA256.txt`。
 
 ## 阅读与书库
 
@@ -22,7 +24,7 @@ Android 包使用项目现有测试签名。安装文件与 SHA256 校验值在 
 - **笔记**：划线、标注、书签与笔记，便于回到对应内容。
 - **本地优先**：不开启同步也能阅读；提供完整备份导入导出。
 
-首次启动默认昵称为“读者”，无预设头像、无示例书籍。点击“导入书籍”添加第一本书，在“偏好设置 → 个人资料”修改昵称和头像。升级不会主动清空已有本地数据。
+首次启动不设置默认昵称、无预设头像、无示例书籍。点击“导入书籍”添加第一本书，在“偏好设置 → 个人资料”设置昵称和头像。升级不会主动清空已有本地数据。
 
 ## 阅读操作
 

@@ -1,4 +1,40 @@
 <!doctype html>
-<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="referrer" content="no-referrer"><title>Papery · 连接 Google Drive</title>
-<style>body{margin:0;background:#f5f3ee;color:#292823;font:16px/1.8 system-ui,sans-serif}main{max-width:540px;margin:10vh auto;padding:28px}h1{font-size:27px}button,a.action{display:block;box-sizing:border-box;width:100%;padding:12px;margin:14px 0;border:0;border-radius:10px;background:#262924;color:white;text-align:center;font:inherit;cursor:pointer;text-decoration:none}button:disabled{opacity:.5}small{color:#666;overflow-wrap:anywhere}textarea{box-sizing:border-box;width:100%;height:100px}#status{padding:12px;background:#e8e8e0;border-radius:8px}[hidden]{display:none!important}</style></head>
-<body><main><small>PAPERY READER</small><h1>连接 Google Drive</h1><p>使用 Google 账号授权，仅访问 Papery 的应用数据。书籍直接在阅读器和 Google Drive 之间传输。</p><p id="status" role="status">正在加载 Google 授权组件…</p><small id="client"></small><button id="connect" disabled>选择 Google 账号</button><section id="result" hidden><a id="return" class="action">返回 Papery 完成连接</a><p>如果浏览器没有打开应用，可复制下方加密连接码，回到阅读器的“粘贴连接码”中完成连接。请保持阅读器打开。</p><textarea id="code" readonly aria-label="加密连接码"></textarea><button id="copy">复制连接码</button></section><p><small>本页面不保存授权令牌，也不需要客户端密钥。授权结果仅能由发起连接的阅读器解密，有效期为 10 分钟。</small></p></main><script type="module" src="./drive-auth.mjs"></script></body></html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="referrer" content="no-referrer">
+  <title>Papery · 连接 Google Drive</title>
+  <style>
+    :root{color-scheme:light;--ink:#292823;--muted:#706d64;--line:#dfdbd1;--paper:#f7f5f0;--accent:#2f4038;--soft:#ece9e0;--warn:#8b5c2c}
+    *{box-sizing:border-box}body{margin:0;min-height:100vh;background:radial-gradient(circle at 20% 0,#fffdf8 0,#f7f5f0 45%,#ece9e0 100%);color:var(--ink);font:15px/1.75 system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif}
+    main{width:min(100% - 32px,620px);margin:7vh auto;padding:36px 34px;background:rgba(255,255,255,.78);border:1px solid rgba(255,255,255,.9);border-radius:24px;box-shadow:0 22px 60px rgba(65,58,48,.12)}
+    .eyebrow{display:inline-block;color:var(--muted);font-size:11px;font-weight:700;letter-spacing:.16em}h1{margin:12px 0 8px;font-size:30px;letter-spacing:-.03em}p{margin:10px 0}.intro{color:var(--muted)}
+    .origin{margin:22px 0;padding:15px 16px;border:1px solid var(--line);border-radius:14px;background:var(--paper)}.origin strong{display:block;font-size:12px;margin-bottom:4px}.origin>code{display:block;color:var(--accent);font:600 14px/1.5 ui-monospace,SFMono-Regular,Consolas,monospace;overflow-wrap:anywhere}.origin small{display:block;margin-top:5px;color:var(--muted)}.origin small code{font:inherit}
+    button,a.action{display:block;width:100%;padding:12px 16px;margin:15px 0;border:0;border-radius:12px;background:var(--accent);color:#fff;text-align:center;font:600 15px/1.4 inherit;cursor:pointer;text-decoration:none}button:disabled{opacity:.55;cursor:wait}button.secondary{background:#e5e2d9;color:var(--ink)}
+    #status{padding:13px 15px;border-radius:12px;background:var(--soft);color:var(--ink)}#status.warn{background:#f5eadb;color:var(--warn)}#status.ok{background:#e4efe8;color:#315c44}
+    #client{display:block;color:var(--muted);font:12px/1.5 ui-monospace,SFMono-Regular,Consolas,monospace;overflow-wrap:anywhere}textarea{box-sizing:border-box;width:100%;height:112px;padding:10px;border:1px solid var(--line);border-radius:10px;background:#fff;font:12px/1.5 ui-monospace,SFMono-Regular,Consolas,monospace;resize:vertical}details{margin-top:22px;color:var(--muted)}summary{cursor:pointer;color:var(--ink);font-weight:600}footer{margin-top:22px;color:var(--muted);font-size:12px} [hidden]{display:none!important}
+    @media(max-width:560px){main{width:100%;min-height:100vh;margin:0;padding:28px 20px;border:0;border-radius:0;box-shadow:none}.eyebrow{font-size:10px}h1{font-size:26px}}
+  </style>
+</head>
+<body>
+  <main>
+    <span class="eyebrow">PAPERY READER · GOOGLE DRIVE</span>
+    <h1>连接 Google Drive</h1>
+    <p class="intro">下一步会打开 Google 官方授权窗口。Papery 只申请“应用数据”权限，用来同步阅读位置、笔记和书籍；不会读取其他 Drive 文件。</p>
+    <div class="origin"><strong>Google Cloud 中必须填写的 JavaScript 来源</strong><code>https://mu-wan.github.io</code><small>只填写这一行。不要加 <code>/papery-epub-reader</code> 路径，也不要加结尾斜杠。</small></div>
+    <p id="status" role="status">正在加载 Google 授权组件…</p>
+    <small id="client"></small>
+    <button id="connect" disabled>继续使用 Google 账号</button>
+    <section id="result" hidden>
+      <a id="return" class="action">返回 Papery 完成连接</a>
+      <p>如果浏览器没有自动返回应用，请复制下方加密连接码，回到阅读器的“粘贴连接码”中完成连接。</p>
+      <textarea id="code" readonly aria-label="加密连接码"></textarea>
+      <button id="copy" class="secondary">复制连接码</button>
+    </section>
+    <details><summary>这是什么页面？</summary><p>这是 Papery 为桌面端和手机端准备的中转页面。Google 账号密码始终由 Google 官方页面处理；Papery 不保存密码、客户端密钥或访问令牌。连接码只属于本次打开的阅读器，10 分钟后失效。</p></details>
+    <footer>如果看到“来源不匹配”，请回到 Google Cloud，检查 JavaScript 来源是否原样填写为 <code>https://mu-wan.github.io</code>，保存后重新连接。</footer>
+  </main>
+  <script type="module" src="./drive-auth.mjs?v=0.1.6"></script>
+</body>
+</html>
