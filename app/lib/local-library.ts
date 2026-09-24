@@ -112,8 +112,8 @@ export async function saveBookProgress(id: string, progress: number, currentLoca
 }
 
 export const saveReaderSettings = (bookId: string, value: ReaderSettings) => put(SETTINGS, { key: `reader:${bookId}`, value, updatedAt:Date.now() });
-export const saveAppPreferences = (value: AppPreferences) => put(SETTINGS, { key: "app", value });
-export const saveSetting = <T>(key:string,value:T) => put(SETTINGS,{key,value});
+export const saveAppPreferences = (value: AppPreferences) => put(SETTINGS, { key: "app", value, updatedAt:Date.now() });
+export const saveSetting = <T>(key:string,value:T) => put(SETTINGS,{key,value,updatedAt:Date.now()});
 
 export async function loadSetting<T>(key: string): Promise<T | null> {
   const db = await getLibrary();
@@ -150,18 +150,21 @@ export async function exportLibraryBackup(){
   return new Blob([JSON.stringify({format:"papery-backup",version:1,exportedAt:new Date().toISOString(),books:encodedBooks,annotations,settings:settings.filter(item=>!item.key.startsWith("sync:")),categories,sessions,tombstones})],{type:"application/json"});
 }
 
-export async function importLibraryBackup(file:File){
+export async function importLibraryBackup(file:File,mode:"merge"|"replace"="merge"){
   const data=JSON.parse(await file.text());validateSnapshot(data);
   // Decode before opening the transaction, so malformed data cannot partially restore.
   const decodedBooks=data.books.map(book=>({...book,blob:dataUrlToBlob(String(book.blob))}));
+  const retainedSyncSettings=mode==="replace"?(await getAll<{key:string;value:unknown}>(SETTINGS)).filter(item=>item.key.startsWith("sync:")):[];
   const db=await getLibrary();
   await new Promise<void>((resolve,reject)=>{
     const tx=db.transaction([BOOKS,ANNOTATIONS,SETTINGS,CATEGORIES,SESSIONS],"readwrite");
+    if(mode==="replace")for(const name of [BOOKS,ANNOTATIONS,SETTINGS,CATEGORIES,SESSIONS])tx.objectStore(name).clear();
     for(const book of decodedBooks)tx.objectStore(BOOKS).put(book);
     for(const item of data.annotations||[])tx.objectStore(ANNOTATIONS).put(item);
-    for(const item of data.settings||[])tx.objectStore(SETTINGS).put(item);
+    for(const item of data.settings||[])if(typeof item.key==="string"&&!item.key.startsWith("sync:"))tx.objectStore(SETTINGS).put(item);
     for(const item of data.categories||[])tx.objectStore(CATEGORIES).put(item);
     for(const item of data.sessions||[])tx.objectStore(SESSIONS).put(item);
+    for(const item of retainedSyncSettings)tx.objectStore(SETTINGS).put(item);
     for(const [key,time] of Object.entries(data.tombstones||{})){
       tx.objectStore(SETTINGS).put({key:`deleted:${key}`,value:time});
       const colon=key.indexOf(":"),collection=key.slice(0,colon),id=key.slice(colon+1);

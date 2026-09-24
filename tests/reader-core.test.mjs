@@ -25,6 +25,22 @@ test('Independent device edits merge and credentials never enter sync snapshots'
  const b={...base(),books:[book('b',200,20)],settings:[{key:'reader:b',value:{fontSize:22},updatedAt:200}]};
  const merged=mergeSnapshots([a,b]);assert.equal(merged.books.length,2);assert.equal(merged.settings.length,2);assert.ok(!JSON.stringify(merged).includes('never-upload'));
 });
+test('A complete library snapshot preserves source files, progress, notes, profile, settings, categories and statistics',()=>{
+ const snapshot={...base(),books:[{...book('epub',100,42),title:'测试书',author:'测试作者',category:'文学',coverDataUrl:'data:image/jpeg;base64,YQ=='}],annotations:[{id:'note-1',bookId:'epub',style:'highlight',quote:'原文',note:'我的想法',locator:'epub-cfi',color:'#f3b56f',chapterTitle:'第一章',progress:42,createdAt:10,updatedAt:20}],settings:[{key:'app',value:{profileName:'读者',avatarDataUrl:'data:image/jpeg;base64,YQ=='}},{key:'reader:epub',value:{fontSize:21}}],categories:[{name:'文学',createdAt:5}],sessions:[{id:'session-1',book_id:'epub',started_at:50,duration_seconds:600,words_read:1200}]};
+ const restored=mergeSnapshots([snapshot]);
+ assert.deepEqual(restored.books,snapshot.books);
+ assert.deepEqual(restored.annotations,snapshot.annotations);
+ assert.deepEqual(restored.settings,snapshot.settings);
+ assert.deepEqual(restored.categories,snapshot.categories);
+ assert.deepEqual(restored.sessions,snapshot.sessions);
+});
+test('Cross-device settings include user profile and reader preferences but exclude device-only data',()=>{
+ const snapshot={...base(),settings:[{key:'app',value:{profileName:'读者'},updatedAt:200},{key:'last-read-book-id',value:'book-a',updatedAt:190},{key:'reader:book-a',value:{fontSize:21},updatedAt:180},{key:'analysis:book-a',value:{totalPages:80},updatedAt:220},{key:'cover:book-a',value:'private-cache'},{key:'sync:drive-config',value:{clientId:'client-id'}}]};
+ const merged=mergeSnapshots([snapshot]);
+ assert.deepEqual(merged.settings.map(item=>item.key),['app','last-read-book-id','reader:book-a']);
+ assert.ok(!JSON.stringify(merged).includes('private-cache'));
+ assert.ok(!JSON.stringify(merged).includes('client-id'));
+});
 test('Corrupt remote files fail validation before local writes',()=>{
  assert.throws(()=>validateSnapshot({...base(),books:[{id:'a',blob:'broken',format:'PDF'}]}));
  assert.throws(()=>validateSnapshot({...base(),annotations:null}));

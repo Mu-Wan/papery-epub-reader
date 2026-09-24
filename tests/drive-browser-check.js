@@ -1,4 +1,4 @@
-// Run drive-login-browser-check.js first, with the two local test books imported.
+// Run drive-login-browser-check.js first; it covers direct Google Identity Services login.
 async (page) => {
   const snapshots = new Map();
   let incoming = [], pendingName = '', fail = false, chunks = 0;

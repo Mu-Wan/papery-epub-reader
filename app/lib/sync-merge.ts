@@ -28,8 +28,9 @@ export function mergeSnapshots(snapshots: SyncSnapshot[]): SyncSnapshot {
     for (const snapshot of snapshots) for (const item of snapshot[collection]) {
       const key = String(item[keyName] || "");
       if (!key || (tombstones[`${collection}:${key}`] || -1) >= stamp(item)) continue;
-      // Tokens, sync configuration, transient analysis and device preferences never leave this device.
-      if (collection === "settings" && !key.startsWith("reader:")) continue;
+      // Only portable reader preferences and the reader profile belong in cross-device sync.
+      // Cached analysis, cover extraction and OAuth/device settings are regenerated or local-only.
+      if (collection === "settings" && key !== "app" && key !== "last-read-book-id" && !key.startsWith("reader:")) continue;
       const previous = items.get(key);
       if (!previous || stamp(item) > stamp(previous) || (stamp(item) === stamp(previous) && JSON.stringify(item) > JSON.stringify(previous))) items.set(key, item);
     }

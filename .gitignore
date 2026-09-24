@@ -45,7 +45,6 @@ next-env.d.ts
 # build artifacts and logs
 build-log*.txt
 .vinext/
-package-lock.json
 
 # tauri build artifacts
 .api-temp-backup/

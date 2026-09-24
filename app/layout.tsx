@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
 import "./globals.css";
+import "./product-ui.css";
 
 // Use local font files to avoid network dependency during build.
 // Geist fonts are cached in .vinext/fonts/ from previous builds.

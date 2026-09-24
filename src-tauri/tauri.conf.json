@@ -1,6 +1,6 @@
 {
-  "productName": "Papery Reader",
-  "version": "0.1.7",
+  "productName": "Papery 阅读器",
+  "version": "0.1.8",
   "identifier": "com.papery.reader",
   "build": {
     "beforeDevCommand": "",
@@ -20,7 +20,7 @@
       }
     ],
     "security": {
-      "csp": "default-src 'self'; style-src 'self' 'unsafe-inline' blob:; img-src 'self' data: blob:; media-src 'self' blob:; script-src 'self' 'unsafe-inline' 'unsafe-eval'; worker-src 'self' blob:; font-src 'self' data: blob:; connect-src 'self' blob: data: ipc: http://ipc.localhost https:; child-src 'self' blob:; frame-src 'self' blob:"
+      "csp": "default-src 'self'; style-src 'self' 'unsafe-inline' blob:; img-src 'self' data: blob:; media-src 'self' blob:; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://accounts.google.com; worker-src 'self' blob:; font-src 'self' data: blob:; connect-src 'self' blob: data: ipc: http://ipc.localhost https:; child-src 'self' blob:; frame-src 'self' blob:"
     }
   },
   "bundle": {
@@ -35,7 +35,9 @@
     ],
     "windows": {
       "nsis": {
-        "installMode": "currentUser"
+        "installMode": "currentUser",
+        "languages": ["SimpChinese"],
+        "displayLanguageSelector": false
       }
     }
   },

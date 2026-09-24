@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="referrer" content="no-referrer">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none';">
+  <meta name="color-scheme" content="light">
+  <title>返回 Papery 阅读器</title>
+  <style>
+    :root{color-scheme:light;--ink:#28292b;--muted:#737579;--line:#e7e7e7;--blue:#b76f45;--blue-soft:#fae8be;--bg:#f6f6f6}
+    *{box-sizing:border-box}body{min-height:100vh;margin:0;padding:24px;display:grid;place-items:center;background:var(--bg);color:var(--ink);font:15px/1.65 Inter,"Microsoft YaHei",sans-serif}
+    main{width:min(100%,480px);padding:34px;border:1px solid #eee4d5;border-radius:18px;background:linear-gradient(145deg,#fff 0%,#fff 66%,#f2f7fa 100%);box-shadow:0 12px 36px #2525250b;text-align:center}
+    .mark{width:54px;height:54px;margin:0 auto 18px;border-radius:15px;background:var(--blue-soft);color:#704522;display:grid;place-items:center;font-size:25px;font-weight:700}
+    h1{margin:0;font-size:23px;letter-spacing:-.4px}p{margin:9px 0;color:var(--muted)}
+    .status{min-height:27px;margin-top:14px;font-size:13px}.status.error{color:#bd4d4a}
+    .spinner{width:20px;height:20px;margin:19px auto 0;border:2px solid #ece8df;border-top-color:var(--blue);border-radius:50%;animation:spin .8s linear infinite}
+    .fallback{margin-top:22px;padding-top:20px;border-top:1px solid var(--line);text-align:left}.fallback p{font-size:13px}
+    textarea{width:100%;min-height:88px;padding:11px;border:1px solid var(--line);border-radius:10px;background:#fafafa;color:var(--ink);font:12px/1.5 ui-monospace,monospace;resize:vertical;overflow-wrap:anywhere}
+    .actions{display:flex;gap:9px;margin-top:10px}a,button{height:42px;padding:0 14px;border:0;border-radius:10px;display:inline-flex;align-items:center;justify-content:center;background:#efc96f;color:#3b2b1b;text-decoration:none;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer}.actions>*{flex:1}a.secondary{background:#f3f3f3;color:var(--ink)}[hidden]{display:none!important}
+    @keyframes spin{to{transform:rotate(360deg)}}@media(prefers-reduced-motion:reduce){.spinner{animation:none}}
+  </style>
+</head>
+<body>
+  <main>
+    <div class="mark" aria-hidden="true">P</div>
+    <h1 id="title">正在返回 Papery</h1>
+    <p id="description">Google 已完成授权，正在将连接安全地交还给阅读器。</p>
+    <div class="spinner" id="spinner" aria-hidden="true"></div>
+    <div class="status" id="status" role="status" aria-live="polite">请稍候，不要关闭此页面。</div>
+    <section class="fallback" id="fallback" hidden>
+      <p>若应用没有自动打开，请复制这段加密连接码，回到 Papery 的同步设置中粘贴。连接码不包含明文访问令牌。</p>
+      <textarea id="code" aria-label="加密连接码" readonly></textarea>
+      <div class="actions"><button id="copy" type="button">复制连接码</button><a class="secondary" href="papery://">打开 Papery</a></div>
+    </section>
+  </main>
+  <script type="module" src="./google-drive-callback.mjs"></script>
+</body>
+</html>

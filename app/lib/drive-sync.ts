@@ -60,7 +60,7 @@ export function syncGoogleDrive(onStatus:(text:string)=>void) {
     // Re-read after network I/O so edits made while uploading cannot be overwritten locally.
     const fresh=JSON.parse(await (await exportLibraryBackup()).text());
     const final=mergeSnapshots([merged,fresh]);
-    await importLibraryBackup(new File([JSON.stringify(final)],"sync.json",{type:"application/json"}));
+    await importLibraryBackup(new File([JSON.stringify(final)],"sync.json",{type:"application/json"}),"replace");
     // Keep two previous snapshots for recovery; failure to tidy does not fail a completed sync.
     const old=files.filter(file=>file.name.startsWith(prefix)).sort((a,b)=>b.name.localeCompare(a.name)).slice(2);
     for(const file of old)await request(`${API}/files/${encodeURIComponent(file.id)}`,{method:"DELETE"}).catch(()=>undefined);
