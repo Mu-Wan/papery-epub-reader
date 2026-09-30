@@ -1,6 +1,6 @@
 {
   "productName": "Papery Reader",
-  "version": "0.1.7",
+  "version": "0.1.27",
   "identifier": "com.papery.reader",
   "build": {
     "beforeDevCommand": "",
@@ -35,7 +35,11 @@
     ],
     "windows": {
       "nsis": {
-        "installMode": "currentUser"
+        "installMode": "currentUser",
+        "languages": [
+          "SimpChinese"
+        ],
+        "displayLanguageSelector": false
       }
     }
   },

@@ -23,7 +23,7 @@ export const defaultReaderSettings: ReaderSettings = {
   paragraphSpacing: 14,
   verticalMargin: 5,
   horizontalMargin: 7,
-  pageColor: "#eee8dc",
+  pageColor: "#FCFBFA",
   paperTexture: "paper",
   flow: "paginated",
   spread: "single",
@@ -97,6 +97,6 @@ export const defaultAppPreferences: AppPreferences = {
   density: "comfortable",
   startPage: "library",
   autoSync: false,
-  profileName: "",
-  avatarDataUrl: "",
+  profileName: "Papery 读者",
+  avatarDataUrl: "/brand/default-avatar-v2.png",
 };

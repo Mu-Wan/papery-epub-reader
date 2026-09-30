@@ -66,3 +66,9 @@ src-tauri/gen/android/gradle/
 /tests/books/
 /.qoder/
 /.openai/
+
+# Unused platform icon exports
+/src-tauri/icons/android/
+/src-tauri/icons/ios/
+/src-tauri/icons/Square*Logo.png
+/src-tauri/icons/StoreLogo.png

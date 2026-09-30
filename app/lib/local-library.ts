@@ -125,6 +125,23 @@ export async function loadSetting<T>(key: string): Promise<T | null> {
   return result;
 }
 
+/** Read a group of settings in one readonly transaction, retaining each key's value. */
+export async function loadSettings<T>(keys: string[]): Promise<Map<string, T | null>> {
+  if (!keys.length) return new Map();
+  const db = await getLibrary();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(SETTINGS, "readonly"), store = tx.objectStore(SETTINGS);
+    const values = new Map<string, T | null>();
+    for (const key of keys) {
+      const request = store.get(key);
+      request.onsuccess = () => values.set(key, request.result?.value ?? null);
+    }
+    tx.oncomplete = () => resolve(values);
+    tx.onerror = () => reject(tx.error);
+    tx.onabort = () => reject(tx.error || new Error("设置读取已中断"));
+  });
+}
+
 export const saveCategory = (name: string) => put(CATEGORIES, { name, createdAt: Date.now() });
 export async function deleteCategory(name: string) {
   const db = await getLibrary();

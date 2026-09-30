@@ -2,6 +2,8 @@
 use tauri::menu::Menu;
 #[cfg(desktop)]
 use tauri::Manager;
+#[cfg(windows)]
+mod windows_icon;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -23,12 +25,27 @@ pub fn run() {
             #[cfg(desktop)]
             {
                 app.set_menu(Menu::new(app)?)?;
-                // 显式设置窗口图标，确保任务栏图标清晰
+                // Window and taskbar icons are separate native Windows slots.
+                #[cfg(windows)]
+                if let Some(window) = app.get_webview_window("main") {
+                    windows_icon::update(&window.as_ref().window());
+                }
+                #[cfg(not(windows))]
                 if let Some(window) = app.get_webview_window("main") {
                     window.set_icon(tauri::image::Image::from_bytes(include_bytes!("../icons/icon.ico"))?)?;
                 }
             }
             Ok(())
+        })
+        .on_window_event(|window, event| {
+            #[cfg(windows)]
+            match event {
+                tauri::WindowEvent::ScaleFactorChanged { scale_factor, .. } => windows_icon::update_for_scale(window, *scale_factor),
+                tauri::WindowEvent::Destroyed => windows_icon::release(window),
+                _ => {}
+            }
+            #[cfg(not(windows))]
+            let _ = (window, event);
         })
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

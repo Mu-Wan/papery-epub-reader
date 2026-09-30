@@ -1,0 +1,35 @@
+async (page) => {
+  await page.setViewportSize({width:1280,height:800}); await page.goto('http://localhost:3100');
+  await page.locator('.appShell[data-ready=true]').waitFor();
+  await page.evaluate(async()=>{const db=await new Promise(resolve=>{const r=indexedDB.open('papery-library',3);r.onsuccess=()=>resolve(r.result)});const tx=db.transaction('categories','readwrite');tx.objectStore('categories').delete('细节检查');await new Promise(resolve=>tx.oncomplete=resolve);db.close()});await page.reload();await page.locator('.appShell[data-ready=true]').waitFor();
+  await page.getByRole('button',{name:'新建分类',exact:true}).click();
+  await page.locator('.smallModal input').fill('细节检查');
+  await page.getByRole('button',{name:'确认',exact:true}).click();
+  await page.mouse.move(1100,700);
+  const search=page.getByRole('textbox',{name:'搜索书名或作者'}); await search.focus();
+  const focus=await search.evaluate(el=>({inner:getComputedStyle(el).outlineStyle,outer:getComputedStyle(el.parentElement).outlineStyle}));
+  if(focus.inner!=='none'||focus.outer!=='solid')throw new Error('Double focus '+JSON.stringify(focus));
+  await search.blur();
+  await page.getByRole('button',{name:'用户资料与同步',exact:true}).click();
+  await page.getByRole('dialog',{name:'用户资料与同步',exact:true}).waitFor();
+  const name=await page.locator('.profileNameField input').inputValue(); if(!name)throw new Error('Missing default profile');
+  await page.locator('.profilePanel').getByRole('button',{name:'关闭用户设置',exact:true}).click();
+  await page.getByRole('button',{name:'偏好设置',exact:true}).click();
+  if(await page.getByText('修改昵称与头像',{exact:true}).count())throw new Error('Profile still inside settings');
+  await page.locator('.settingsPanel').getByRole('button',{name:'关闭偏好设置',exact:true}).click();
+  await page.getByRole('button',{name:'用户资料与同步',exact:true}).click(); await page.getByRole('button',{name:'云同步',exact:true}).click();
+  const toggle=page.getByRole('switch',{name:'连接期间在书库自动同步'}); await toggle.waitFor();
+  const before=await toggle.getAttribute('aria-checked'); await toggle.focus(); await page.keyboard.press('Space');
+  if(await toggle.getAttribute('aria-checked')===before)throw new Error('Custom switch keyboard failed');
+  await page.locator('.profilePanel').getByRole('button',{name:'关闭用户设置',exact:true}).click();
+  await page.mouse.move(1100,700);await search.focus();
+  const del=page.getByRole('button',{name:'删除分类 细节检查'});if(await del.evaluate(el=>getComputedStyle(el).opacity)!=='0')throw new Error('Delete visible normally');
+  const cat=page.getByRole('button',{name:'细节检查 0',exact:true});
+  const plain=await cat.evaluate(el=>getComputedStyle(el).backgroundColor);await cat.hover();
+  await page.waitForFunction(()=>{const el=document.querySelector('[aria-label="删除分类 细节检查"]');return el&&getComputedStyle(el).opacity==='1'});
+  if(await cat.evaluate(el=>getComputedStyle(el).backgroundColor)===plain)throw new Error('No category hover');
+  if(await del.evaluate(el=>getComputedStyle(el).opacity)!=='1')throw new Error('Delete hidden on hover');
+  if(await page.locator('.peekImport').count())throw new Error('Duplicate import');
+  await page.mouse.move(1100,700);await page.screenshot({path:'output/ui-0.1.27/library-details.png'});
+  return {result:'PASS: single focus, avatar profile, default name, own switch keyboard, category hover/delete reveal, recent reading, one import',focus,name};
+}

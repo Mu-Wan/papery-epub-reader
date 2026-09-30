@@ -2,7 +2,7 @@ name: Publish project homepage
 on:
   push:
     branches: [main]
-    paths: [site/**, public/google-drive-connect.html, public/google-drive-connect.mjs, .github/workflows/pages.yml]
+    paths: [site/**, public/google-drive-callback.html, public/google-drive-callback.mjs, .github/workflows/pages.yml]
   workflow_dispatch:
 permissions:
   contents: read
@@ -23,7 +23,7 @@ jobs:
         run: |
           mkdir -p _site
           cp -R site/. _site/
-          cp public/google-drive-connect.html public/google-drive-connect.mjs _site/
+          cp public/google-drive-callback.html public/google-drive-callback.mjs _site/
           touch _site/.nojekyll
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3

@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
 import "./globals.css";
+import "./papery-ui.css";
 
 // Use local font files to avoid network dependency during build.
 // Geist fonts are cached in .vinext/fonts/ from previous builds.
@@ -35,8 +36,9 @@ export const metadata: Metadata = {
     "codex-preview": "development",
   },
   icons: {
-    icon: "/favicon.svg",
-    shortcut: "/favicon.svg",
+    icon: "/favicon.ico",
+    shortcut: "/favicon.ico",
+    apple: "/brand/papery-256.png",
   },
 };
 

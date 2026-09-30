@@ -7,10 +7,17 @@ export type SyncSnapshot = {
 };
 
 export function validateSnapshot(value: unknown): asserts value is SyncSnapshot {
+  if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error("同步文件格式不正确");
   const v = value as SyncSnapshot;
   if (!v || v.format !== "papery-backup" || v.version !== 1) throw new Error("同步文件格式不正确");
   for (const name of ["books", "annotations", "settings", "categories", "sessions"] as const) {
-    if (!Array.isArray(v[name]) || v[name].some(item => !item || typeof item !== "object")) throw new Error("同步文件内容不完整");
+    if (!Array.isArray(v[name]) || v[name].some(item => !item || typeof item !== "object" || Array.isArray(item))) throw new Error("同步文件内容不完整");
+  }
+  if (v.tombstones !== undefined) {
+    if (!v.tombstones || typeof v.tombstones !== "object" || Array.isArray(v.tombstones)) throw new Error("同步删除记录无效");
+    for (const time of Object.values(v.tombstones)) {
+      if (typeof time !== "number" || !Number.isFinite(time) || time < 0) throw new Error("同步删除记录无效");
+    }
   }
   for (const book of v.books) if (typeof book.id !== "string" || typeof book.blob !== "string" || !/^data:[^,]*;base64,/.test(book.blob) || !["TXT", "EPUB", "PDF"].includes(String(book.format))) throw new Error("同步书籍数据无效");
 }
@@ -28,8 +35,9 @@ export function mergeSnapshots(snapshots: SyncSnapshot[]): SyncSnapshot {
     for (const snapshot of snapshots) for (const item of snapshot[collection]) {
       const key = String(item[keyName] || "");
       if (!key || (tombstones[`${collection}:${key}`] || -1) >= stamp(item)) continue;
-      // Tokens, sync configuration, transient analysis and device preferences never leave this device.
-      if (collection === "settings" && !key.startsWith("reader:")) continue;
+      // Only portable reader preferences and the reader profile belong in cross-device sync.
+      // Cached analysis, cover extraction and OAuth/device settings are regenerated or local-only.
+      if (collection === "settings" && key !== "app" && key !== "last-read-book-id" && !key.startsWith("reader:")) continue;
       const previous = items.get(key);
       if (!previous || stamp(item) > stamp(previous) || (stamp(item) === stamp(previous) && JSON.stringify(item) > JSON.stringify(previous))) items.set(key, item);
     }
