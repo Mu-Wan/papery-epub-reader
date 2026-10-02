@@ -1,5 +1,5 @@
 import type { AppPreferences, BookFormat, ReaderAnnotation, ReaderSettings } from "./reader-types";
-import { validateSnapshot } from "./sync-merge";
+import { portableSetting, validateSnapshot, type SyncRecord } from "./sync-merge";
 
 export type LocalBookRecord = {
   id: string;
@@ -112,8 +112,8 @@ export async function saveBookProgress(id: string, progress: number, currentLoca
 }
 
 export const saveReaderSettings = (bookId: string, value: ReaderSettings) => put(SETTINGS, { key: `reader:${bookId}`, value, updatedAt:Date.now() });
-export const saveAppPreferences = (value: AppPreferences) => put(SETTINGS, { key: "app", value });
-export const saveSetting = <T>(key:string,value:T) => put(SETTINGS,{key,value});
+export const saveAppPreferences = (value: AppPreferences) => put(SETTINGS, { key: "app", value, updatedAt:Date.now() });
+export const saveSetting = <T>(key:string,value:T) => put(SETTINGS,{key,value,updatedAt:Date.now()});
 
 export async function loadSetting<T>(key: string): Promise<T | null> {
   const db = await getLibrary();
@@ -142,15 +142,27 @@ export async function loadSettings<T>(keys: string[]): Promise<Map<string, T | n
   });
 }
 
-export const saveCategory = (name: string) => put(CATEGORIES, { name, createdAt: Date.now() });
-export async function deleteCategory(name: string) {
+export const saveCategory = (name: string) => put(CATEGORIES, { name, createdAt: Date.now(), updatedAt:Date.now() });
+export async function renameCategory(name: string, next: string) { await changeCategory(name, next.trim()); }
+export async function deleteCategory(name: string) { await changeCategory(name, null); }
+async function changeCategory(name: string, next: string | null) {
+  if (name === "未分类" || next === "未分类" || (next !== null && !next)) throw new Error("分类名称无效");
+  if (name === next) return;
   const db = await getLibrary();
   await new Promise<void>((resolve, reject) => {
-    const tx = db.transaction([CATEGORIES,SETTINGS], "readwrite");
-    tx.objectStore(CATEGORIES).delete(name);
-    tx.objectStore(SETTINGS).put({key:`deleted:categories:${name}`,value:Date.now()});
+    const tx = db.transaction([CATEGORIES,SETTINGS,BOOKS], "readwrite"), categories = tx.objectStore(CATEGORIES), time=Date.now();
+    let failure:Error|undefined;
+    const update=()=>{
+      categories.delete(name);
+      if(next)categories.put({name:next,createdAt:time,updatedAt:time});
+      tx.objectStore(SETTINGS).put({key:`deleted:categories:${name}`,value:time});
+      const request=tx.objectStore(BOOKS).openCursor();
+      request.onsuccess=()=>{const cursor=request.result;if(cursor){if(cursor.value.category===name)cursor.update({...cursor.value,category:next||"未分类",updatedAt:time});cursor.continue()}};
+    };
+    if(next){const request=categories.get(next);request.onsuccess=()=>{if(request.result){failure=new Error("已有同名分类");tx.abort()}else update()}}else update();
     tx.oncomplete = () => resolve();
     tx.onerror = () => reject(tx.error);
+    tx.onabort = () => reject(failure||tx.error||new Error("分类修改失败，原数据已保留"));
   });
 }
 export const loadCategories = async () => (await getAll<{ name: string }>(CATEGORIES)).map(item => item.name);
@@ -161,34 +173,56 @@ function blobToDataUrl(blob:Blob){return new Promise<string>((resolve,reject)=>{
 function dataUrlToBlob(value:string){const [header,data]=value.split(",",2);const mime=/data:([^;]+)/.exec(header)?.[1]||"application/octet-stream";const binary=atob(data);const bytes=new Uint8Array(binary.length);for(let index=0;index<binary.length;index++)bytes[index]=binary.charCodeAt(index);return new Blob([bytes],{type:mime})}
 
 export async function exportLibraryBackup(){
-  const [books,annotations,settings,categories,sessions]=await Promise.all([loadLocalBooks(),loadLocalAnnotations(),getAll<{key:string;value:unknown}>(SETTINGS),getAll<{name:string;createdAt?:number}>(CATEGORIES),loadLocalSessions()]);
-  const encodedBooks=await Promise.all(books.map(async({blob,...book})=>({...book,blob:await blobToDataUrl(blob)})));
+  const db=await getLibrary();
+  const [books,annotations,settings,categories,sessions]=await new Promise<[LocalBookRecord[],ReaderAnnotation[],{key:string;value:unknown}[],{name:string}[],LocalReadingSession[]]>((resolve,reject)=>{
+    const tx=db.transaction([BOOKS,ANNOTATIONS,SETTINGS,CATEGORIES,SESSIONS],"readonly"), values:unknown[]=[];
+    [BOOKS,ANNOTATIONS,SETTINGS,CATEGORIES,SESSIONS].forEach((name,index)=>{const request=tx.objectStore(name).getAll();request.onsuccess=()=>{values[index]=request.result}});
+    tx.oncomplete=()=>resolve(values as [LocalBookRecord[],ReaderAnnotation[],{key:string;value:unknown}[],{name:string}[],LocalReadingSession[]]);tx.onerror=()=>reject(tx.error);tx.onabort=()=>reject(tx.error);
+  });
+  const encodedBooks=await Promise.all(books.map(async({blob,...book})=>({...book,coverDataUrl:book.coverDataUrl||settings.find(item=>item.key===`cover:${book.id}`)?.value||null,blob:await blobToDataUrl(blob)})));
   const tombstones=Object.fromEntries(settings.filter(item=>item.key.startsWith("deleted:")).map(item=>[item.key.slice(8),item.value]));
-  return new Blob([JSON.stringify({format:"papery-backup",version:1,exportedAt:new Date().toISOString(),books:encodedBooks,annotations,settings:settings.filter(item=>!item.key.startsWith("sync:")),categories,sessions,tombstones})],{type:"application/json"});
+  return new Blob([JSON.stringify({format:"papery-backup",version:1,exportedAt:new Date().toISOString(),books:encodedBooks,annotations,settings:settings.filter(item=>portableSetting(item.key)),categories,sessions,tombstones})],{type:"application/json"});
 }
 
 export async function importLibraryBackup(file:File){
   const data=JSON.parse(await file.text());validateSnapshot(data);
+  for(const book of data.books){
+    if(["title","author","category"].some(key=>typeof book[key]!=="string")||typeof book.progress!=="number"||!Number.isFinite(book.progress)||book.progress<0||book.progress>100)throw new Error("备份书籍信息无效");
+    if(book.currentLocation!==undefined&&typeof book.currentLocation!=="string")throw new Error("备份阅读位置无效");
+  }
+  for(const note of data.annotations)if(["quote","note","locator","color","chapterTitle"].some(key=>typeof note[key]!=="string")||!["highlight","underline","bookmark"].includes(String(note.style))||typeof note.progress!=="number"||!Number.isFinite(note.progress))throw new Error("备份笔记信息无效");
+  for(const item of data.settings)if(portableSetting(String(item.key))){
+    if(item.key==="last-read-book-id"){if(typeof item.value!=="string")throw new Error("备份最近阅读记录无效");continue;}
+    if(!item.value||typeof item.value!=="object"||Array.isArray(item.value))throw new Error("备份偏好设置无效");
+    const value=item.value as Record<string,unknown>;
+    for(const key of ["fontSize","lineHeight","paragraphSpacing","verticalMargin","horizontalMargin"])if(value[key]!==undefined&&(typeof value[key]!=="number"||!Number.isFinite(value[key])))throw new Error("备份排版设置无效");
+    for(const key of ["profileName","avatarDataUrl","fontFamily","flow","spread","pageColor"])if(value[key]!==undefined&&typeof value[key]!=="string")throw new Error("备份偏好设置无效");
+  }
   // Decode before opening the transaction, so malformed data cannot partially restore.
   const decodedBooks=data.books.map(book=>({...book,blob:dataUrlToBlob(String(book.blob))}));
   const db=await getLibrary();
   await new Promise<void>((resolve,reject)=>{
     const tx=db.transaction([BOOKS,ANNOTATIONS,SETTINGS,CATEGORIES,SESSIONS],"readwrite");
-    for(const book of decodedBooks)tx.objectStore(BOOKS).put(book);
-    for(const item of data.annotations||[])tx.objectStore(ANNOTATIONS).put(item);
-    for(const item of data.settings||[])tx.objectStore(SETTINGS).put(item);
-    for(const item of data.categories||[])tx.objectStore(CATEGORIES).put(item);
-    for(const item of data.sessions||[])tx.objectStore(SESSIONS).put(item);
-    for(const [key,time] of Object.entries(data.tombstones||{})){
-      tx.objectStore(SETTINGS).put({key:`deleted:${key}`,value:time});
-      const colon=key.indexOf(":"),collection=key.slice(0,colon),id=key.slice(colon+1);
-      if([BOOKS,ANNOTATIONS,CATEGORIES].includes(collection)){
-        const store=tx.objectStore(collection),request=store.get(id);
-        request.onsuccess=()=>{const record=request.result;if(record&&Number(record.updatedAt||record.createdAt||0)<=time)store.delete(id)};
+    const names=[BOOKS,ANNOTATIONS,SETTINGS,CATEGORIES,SESSIONS],existing:Record<string,SyncRecord[]>={};let remaining=names.length,failure:unknown;
+    const stamp=(record:SyncRecord)=>Number(record.updatedAt||record.createdAt||record.started_at||0);
+    const apply=()=>{try{
+      const tombstones:Record<string,number>={...data.tombstones};
+      for(const item of existing[SETTINGS])if(String(item.key).startsWith("deleted:")){const key=String(item.key).slice(8);tombstones[key]=Math.max(tombstones[key]||0,Number(item.value)||0)}
+      const incoming:Record<string,SyncRecord[]>={books:decodedBooks,annotations:data.annotations,settings:data.settings.filter(item=>portableSetting(String(item.key))),categories:data.categories,sessions:data.sessions};
+      const liveBooks=new Set(existing[BOOKS].filter(item=>(tombstones[`books:${item.id}`]??-1)<stamp(item)).map(item=>item.id));
+      for(const item of incoming.books)if((tombstones[`books:${item.id}`]??-1)<stamp(item))liveBooks.add(item.id);
+      for(const name of names){const key=name===SETTINGS?"key":name===CATEGORIES?"name":"id",store=tx.objectStore(name),old=new Map(existing[name].map(item=>[String(item[key]),item]));
+        for(const item of incoming[name]){const id=String(item[key]);if((tombstones[`${name}:${id}`]??-1)>=stamp(item)||name===ANNOTATIONS&&!liveBooks.has(String(item.bookId)))continue;const previous=old.get(id);if(!previous||stamp(item)>stamp(previous))store.put(item)}
+        if(name!==SETTINGS)for(const item of existing[name])if((tombstones[`${name}:${item[key]}`]??-1)>=stamp(item)||name===ANNOTATIONS&&!liveBooks.has(String(item.bookId)))store.delete(String(item[key]));
       }
-    }
-    tx.oncomplete=()=>resolve();tx.onerror=()=>reject(tx.error);tx.onabort=()=>reject(tx.error||new Error("恢复未完成，原数据已保留"));
+      for(const [key,time] of Object.entries(tombstones))tx.objectStore(SETTINGS).put({key:`deleted:${key}`,value:time});
+    }catch(error){failure=error;tx.abort()}};
+    for(const name of names){const request=tx.objectStore(name).getAll();request.onsuccess=()=>{existing[name]=request.result;if(!--remaining)apply()}};
+    tx.oncomplete=()=>resolve();tx.onerror=()=>reject(tx.error);
+    tx.onabort=()=>reject(failure||tx.error||new Error("恢复未完成，原数据已保留"));
   });
+  // Only committed IDB positions may override the local crash-recovery cache.
+  for(const book of data.books)try{localStorage.removeItem(`papery-progress-${book.id}`)}catch{}
 }
 
 export function getDeviceId() {

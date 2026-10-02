@@ -3,7 +3,7 @@
 </a>
 
 <p align="center"><strong>一个安静、本地优先的阅读空间。</strong><br>Windows · Android &nbsp; / &nbsp; EPUB · PDF · TXT</p>
-<p align="center"><a href="https://github.com/Mu-Wan/papery-epub-reader/releases/tag/papery-v0.1.27">下载 0.1.27</a> &nbsp; · &nbsp; <a href="https://mu-wan.github.io/papery-epub-reader/">项目主页</a> &nbsp; · &nbsp; <a href="docs/Google-Drive-接入.md">同步配置</a> &nbsp; · &nbsp; <a href="https://github.com/Mu-Wan/papery-epub-reader/issues">反馈问题</a></p>
+<p align="center"><a href="https://github.com/Mu-Wan/papery-epub-reader/releases/tag/papery-v0.1.28">下载 0.1.28</a> &nbsp; · &nbsp; <a href="https://mu-wan.github.io/papery-epub-reader/">项目主页</a> &nbsp; · &nbsp; <a href="docs/Google-Drive-接入.md">同步配置</a> &nbsp; · &nbsp; <a href="https://github.com/Mu-Wan/papery-epub-reader/issues">反馈问题</a></p>
 
 ## 从一本书开始
 
@@ -32,19 +32,25 @@ Papery 把书籍、阅读位置和随手写下的想法保存在本机。导入�
 
 | 平台 | 安装文件 | 环境 |
 | --- | --- | --- |
-| Windows | [下载 EXE 安装包](https://github.com/Mu-Wan/papery-epub-reader/releases/download/papery-v0.1.27/Papery-Reader-0.1.27-Windows-x64-Setup.exe) | x64，使用 WebView2 |
-| Android | [下载 APK 安装包](https://github.com/Mu-Wan/papery-epub-reader/releases/download/papery-v0.1.27/Papery-Reader-0.1.27-Android-arm64.apk) | Android 7.0+，arm64 |
+| Windows | [下载 EXE 安装包](https://github.com/Mu-Wan/papery-epub-reader/releases/download/papery-v0.1.28/Papery-Reader-0.1.28-Windows-x64-Setup.exe) | x64，使用 WebView2 |
+| Android | [下载 APK 安装包](https://github.com/Mu-Wan/papery-epub-reader/releases/download/papery-v0.1.28/Papery-Reader-0.1.28-Android-arm64.apk) | Android 7.0+，arm64 |
 
-Windows 安装向导使用中文，程序名称为 **Papery Reader**。Android 包沿用项目现有测试签名。安装文件与 [SHA256 校验值](https://github.com/Mu-Wan/papery-epub-reader/releases/download/papery-v0.1.27/SHA256SUMS.txt) 均在 [0.1.27 发布页](https://github.com/Mu-Wan/papery-epub-reader/releases/tag/papery-v0.1.27) 提供。Windows 7 的实际设备兼容性尚未验证。
+Windows 安装向导使用中文，程序名称为 **Papery Reader**。Android 包沿用项目现有测试签名。安装文件与 [SHA256 校验值](https://github.com/Mu-Wan/papery-epub-reader/releases/download/papery-v0.1.28/SHA256SUMS.txt) 均在 [0.1.28 发布页](https://github.com/Mu-Wan/papery-epub-reader/releases/tag/papery-v0.1.28) 提供。Windows 7 的实际设备兼容性尚未验证。
 
 首次打开是空书库，默认昵称为“Papery 读者”，并配有默认头像。点击顶部“导入书籍”添加第一本书；点击侧栏底部**整条用户横栏**，即可修改个人资料或进入云同步。升级不会主动清空已有本地数据。
 
 ## 阅读操作
 
 - 分页模式：方向键、PageUp / PageDown、空格、鼠标滚轮或正文左右区域翻页；手机支持横向滑动。
+- EPUB 连续滚动跨章节接续；双页模式保持固定中缝，左右边距调整页面外侧空间。
 - 工具栏：正文中间区域与右上角按钮可显示或隐藏；PDF 左侧工具可收起。
+- 沉浸阅读保留透明的阅读位置、时间与电量信息；设备未提供电量时显示“—”。
 - 阅读定位：EPUB / TXT 保存内容位置，PDF 保存实际页码。可重排格式的屏幕分页随内容、排版与窗口大小变化。
 - 本地备份：在偏好设置中导出或恢复完整书库。不开启同步也能正常阅读。
+
+分类可通过悬停编辑按钮、双击名称或 F2 改名。Windows 与 Android 共用版本 1 备份格式，迁移书籍原文件、封面、排版、个人资料、笔记与阅读记录；备份不包含 Google 连接配置或授权令牌。
+
+[0.1.28 更新说明](docs/releases/0.1.28.md) · [备份格式与兼容性约定](docs/backup-format.md)
 
 ## 可选的 Google Drive 同步
 

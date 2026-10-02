@@ -1,6 +1,6 @@
 "use client";
 import { memo } from "react";
-import { ArrowUpRight, BookOpen, Check, Menu, MoreHorizontal, Plus, Search, Trash2 } from "lucide-react";
+import { ArrowUpRight, BookOpen, Check, Menu, MoreHorizontal, Plus, Search, Trash2 } from "./PaperyIcons";
 import { BookArtwork } from "./BookArtwork";
 import { SelectionGroup } from "./SelectionGroup";
 
@@ -31,7 +31,7 @@ export const LibraryView = memo(function LibraryView({ books, allBooks, recentBo
         {!allBooks.length && <div className="emptyLibrary"><BookOpen size={36}/><h2>放进第一本书</h2><p>导入 EPUB、PDF 或 TXT，书籍和阅读记录会保存在本机。</p><button className="uiButton primary" onClick={onImport}><Plus size={18}/>选择书籍</button></div>}
         {!!allBooks.length && !books.length && <p className="emptyLibraryHint">没有符合条件的书籍。可以调整分类或搜索词。</p>}
         <div className="bookGrid">{books.map((book, index) => <article className="bookCard" style={{ animationDelay: `${Math.min(index, 3) * 50}ms` }} data-book-menu-root={bookMenu === book.id ? "true" : undefined} key={book.id}>
-          <button className="bookOpen" aria-label={`阅读《${book.title}》`} onClick={() => onRead(book)}><div className="cover"><BookArtwork book={book}/><span className="typePill">{book.type}</span></div><div className="bookInfo"><h3 title={book.title}>{book.title}</h3><p>{book.author}</p><div className="bookProgress"><span><i className={book.progress >= 99 ? "complete" : ""} style={{ width: `${book.progress}%` }}/></span><em>{Math.round(book.progress)}%</em></div></div></button>
+          <button className="bookOpen" aria-label={`阅读《${book.title}》`} onClick={() => onRead(book)}><div className="cover"><BookArtwork book={book}/>{book.coverDataUrl && <span className="typePill">{book.type}</span>}</div><div className="bookInfo"><h3 title={book.title}>{book.title}</h3><p>{book.author}</p><div className="bookProgress"><span><i className={book.progress >= 99 ? "complete" : ""} style={{ width: `${book.progress}%` }}/></span><em>{Math.round(book.progress)}%</em></div></div></button>
           <button className="moreBook" aria-label={`管理《${book.title}》`} aria-expanded={bookMenu === book.id} onClick={() => setBookMenu(bookMenu === book.id ? null : book.id)}><MoreHorizontal size={18}/></button>
           {bookMenu === book.id && <div className="bookMenu"><small>移动到分类</small>{categories.map(item => <button key={item} className={book.category === item ? "active" : ""} onClick={() => onMove(book, item)}>{book.category === item && <Check size={13}/>}<span>{item}</span></button>)}<button className="deleteBookAction" onClick={() => onDelete(book)}><Trash2 size={14}/><span>删除书籍</span></button></div>}
         </article>)}</div>

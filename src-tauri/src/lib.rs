@@ -5,6 +5,22 @@ use tauri::Manager;
 #[cfg(windows)]
 mod windows_icon;
 
+#[derive(serde::Serialize)]
+struct DevicePower { percent: u8, charging: bool }
+
+#[tauri::command]
+fn device_power_status() -> Option<DevicePower> {
+    #[cfg(windows)]
+    unsafe {
+        use windows_sys::Win32::System::Power::{GetSystemPowerStatus, SYSTEM_POWER_STATUS};
+        let mut status: SYSTEM_POWER_STATUS = std::mem::zeroed();
+        if GetSystemPowerStatus(&mut status) != 0 && status.BatteryLifePercent <= 100 && status.BatteryFlag != 128 {
+            return Some(DevicePower { percent: status.BatteryLifePercent, charging: status.BatteryFlag & 8 != 0 });
+        }
+    }
+    None
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let builder = tauri::Builder::default();
@@ -16,6 +32,7 @@ pub fn run() {
         }
     }));
     builder
+        .invoke_handler(tauri::generate_handler![device_power_status])
         .plugin(tauri_plugin_deep_link::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())

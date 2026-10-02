@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { X, Cloud, LogOut } from "lucide-react";
+import { X, Cloud, LogOut } from "./PaperyIcons";
 import { loadSetting, saveSetting } from "../lib/local-library";
 import { connectDriveToken, disconnectDrive, driveConnected, syncGoogleDrive, type DriveConfig } from "../lib/drive-sync";
 import { startDriveLogin, finishDriveLogin, cancelDriveLogin } from "../lib/drive-auth";

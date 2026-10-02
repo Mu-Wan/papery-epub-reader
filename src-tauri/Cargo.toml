@@ -1,6 +1,6 @@
 [package]
 name = "papery-reader"
-version = "0.1.27"
+version = "0.1.28"
 description = "Papery 阅读器"
 authors = []
 edition = "2021"
@@ -32,4 +32,4 @@ strip = true
 tauri-plugin-single-instance = { version = "2", features = ["deep-link"] }
 
 [target.'cfg(windows)'.dependencies]
-windows-sys = { version = "0.61", features = ["Win32_Foundation", "Win32_System_LibraryLoader", "Win32_UI_WindowsAndMessaging"] }
+windows-sys = { version = "0.61", features = ["Win32_Foundation", "Win32_System_LibraryLoader", "Win32_System_Power", "Win32_UI_WindowsAndMessaging"] }

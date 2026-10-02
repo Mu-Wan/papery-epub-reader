@@ -232,3 +232,27 @@ index 95c4d0d..63ea649 100644
              this.#replaceBackground(this.#view.docBackground, this.columnCount)
          })
  
+diff --git a/node_modules/foliate-js/view.js b/node_modules/foliate-js/view.js
+index 6babab6..ec9f9e1 100644
+--- a/node_modules/foliate-js/view.js
++++ b/node_modules/foliate-js/view.js
+@@ -217,7 +217,7 @@ export class View extends HTMLElement {
+             this.renderer.goTo(resolved)
+         })
+     }
+-    async open(book) {
++    async open(book, options = {}) {
+         if (typeof book === 'string'
+         || typeof book.arrayBuffer === 'function'
+         || book.isDirectory) book = await makeBook(book)
+@@ -238,7 +238,9 @@ export class View extends HTMLElement {
+         }
+ 
+         this.isFixedLayout = this.book.rendition?.layout === 'pre-paginated'
+-        if (this.isFixedLayout) {
++        if (!this.isFixedLayout && options.renderer) {
++            this.renderer = options.renderer
++        } else if (this.isFixedLayout) {
+             await import('./fixed-layout.js')
+             this.renderer = document.createElement('foliate-fxl')
+         } else {

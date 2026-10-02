@@ -12,15 +12,27 @@ export function validateSnapshot(value: unknown): asserts value is SyncSnapshot 
   if (!v || v.format !== "papery-backup" || v.version !== 1) throw new Error("同步文件格式不正确");
   for (const name of ["books", "annotations", "settings", "categories", "sessions"] as const) {
     if (!Array.isArray(v[name]) || v[name].some(item => !item || typeof item !== "object" || Array.isArray(item))) throw new Error("同步文件内容不完整");
+    const key = name === "settings" ? "key" : name === "categories" ? "name" : "id";
+    const seen = new Set<string>();
+    for (const item of v[name]) {
+      if (typeof item[key] !== "string" || !String(item[key]).trim() || seen.has(String(item[key]))) throw new Error("备份记录标识无效或重复");
+      seen.add(String(item[key]));
+      for (const field of ["updatedAt", "createdAt", "started_at"]) if (item[field] !== undefined && (typeof item[field] !== "number" || !Number.isFinite(item[field]) || Number(item[field]) < 0)) throw new Error("备份记录时间无效");
+    }
   }
   if (v.tombstones !== undefined) {
     if (!v.tombstones || typeof v.tombstones !== "object" || Array.isArray(v.tombstones)) throw new Error("同步删除记录无效");
-    for (const time of Object.values(v.tombstones)) {
+    for (const [key,time] of Object.entries(v.tombstones)) {
+      if (!/^(books|annotations|categories):.+/.test(key)) throw new Error("同步删除记录无效");
       if (typeof time !== "number" || !Number.isFinite(time) || time < 0) throw new Error("同步删除记录无效");
     }
   }
-  for (const book of v.books) if (typeof book.id !== "string" || typeof book.blob !== "string" || !/^data:[^,]*;base64,/.test(book.blob) || !["TXT", "EPUB", "PDF"].includes(String(book.format))) throw new Error("同步书籍数据无效");
+  for (const book of v.books) if (typeof book.blob !== "string" || !/^data:[^,]*;base64,(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(book.blob) || !["TXT", "EPUB", "PDF"].includes(String(book.format))) throw new Error("同步书籍数据无效");
+  for (const note of v.annotations) if (typeof note.bookId !== "string" || !note.bookId) throw new Error("备份笔记关联无效");
+  for (const session of v.sessions) if (typeof session.book_id !== "string" || !session.book_id || typeof session.duration_seconds !== "number" || !Number.isFinite(session.duration_seconds) || session.duration_seconds < 0) throw new Error("备份阅读记录无效");
 }
+
+export const portableSetting = (key: string) => key === "app" || key === "last-read-book-id" || key.startsWith("reader:");
 
 const stamp = (item: SyncRecord) => Number(item.updatedAt || item.createdAt || item.started_at || 0);
 /** Deterministic last-edit-wins. Progress may move backwards; tombstones prevent resurrection. */
@@ -37,7 +49,7 @@ export function mergeSnapshots(snapshots: SyncSnapshot[]): SyncSnapshot {
       if (!key || (tombstones[`${collection}:${key}`] || -1) >= stamp(item)) continue;
       // Only portable reader preferences and the reader profile belong in cross-device sync.
       // Cached analysis, cover extraction and OAuth/device settings are regenerated or local-only.
-      if (collection === "settings" && key !== "app" && key !== "last-read-book-id" && !key.startsWith("reader:")) continue;
+      if (collection === "settings" && !portableSetting(key)) continue;
       const previous = items.get(key);
       if (!previous || stamp(item) > stamp(previous) || (stamp(item) === stamp(previous) && JSON.stringify(item) > JSON.stringify(previous))) items.set(key, item);
     }

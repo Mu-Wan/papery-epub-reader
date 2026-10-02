@@ -1,0 +1,71 @@
+/* Reading controls share a quiet focus boundary; documents retain their paper. */
+.appShell .uiButton { border-radius:12px; }
+.noteContent { max-width:68ch; }
+@media(min-width:1800px) {
+  .notesLayout { grid-template-columns:220px minmax(0,1040px);justify-content:start; }
+  .libraryPage,.statsPage { max-width:1720px; }
+}
+.categoryList { min-height:0; overflow:auto; flex:0 1 auto; padding:0 2px; margin:0 -2px; }
+.sidebarShelf>p,.sidebarShelf>.addCategory { flex-shrink:0; }
+.sidebarShelf>.addCategory { margin-top:8px; }
+.categoryActions { position:absolute;right:4px;top:50%;transform:translateY(-50%);display:flex;gap:2px;opacity:0;pointer-events:none;transition:opacity 120ms ease-out; }
+.categoryActions button,.sidebarShelf .categoryActions .categoryDelete { position:static;display:grid;place-items:center;width:24px;height:28px;padding:0;border:0;border-radius:6px;background:transparent;color:var(--muted);opacity:1;transform:none;pointer-events:inherit; }
+.categoryRow:hover .categoryActions,.categoryRow:has(:focus-visible) .categoryActions { opacity:1;pointer-events:auto; }
+.categoryRow:has(.categoryActions):hover .categoryButton em,.categoryRow:has(.categoryActions):has(:focus-visible) .categoryButton em { transform:translateX(-54px); }
+.categoryRow:has(.categoryActions):hover .categoryButton>span,.categoryRow:has(.categoryActions):has(:focus-visible) .categoryButton>span { max-width:calc(100% - 86px); }
+.categoryActions .categoryEdit:hover { color:var(--ink);background:var(--surface-inset); }
+.categoryActions .categoryDelete:hover { color:var(--orange-text);background:var(--orange-soft); }
+.fieldError { margin:0 0 16px;color:var(--orange-text);font-size:13px;line-height:1.6; }
+
+/* Input spacing belongs to the field itself, never to a fixed-height label. */
+.syncPanel>label,.userSyncContent>label { display:grid;grid-template-columns:minmax(0,1fr);gap:8px;height:auto;min-height:0;margin:18px 0 12px;align-items:stretch; }
+.syncPanel>label>input,.syncPanel>label>textarea { margin:0;flex:none;box-sizing:border-box; }
+.syncPanel>.uiButton { position:relative;margin-top:8px; }
+.appShell :is(.smallModal>input,.profileNameField input,.syncPanel input:not([type=checkbox]),.syncPanel textarea,.annotationComposer textarea) { outline:none;border:1px solid var(--outline);background:var(--surface-muted); }
+.appShell :is(.smallModal>input,.profileNameField input,.syncPanel input:not([type=checkbox]),.syncPanel textarea,.annotationComposer textarea):focus { outline:none;border-color:var(--secondary);box-shadow:0 0 0 2px rgba(91,92,96,.07); }
+.appShell :is(.searchBox,.bookSearchInput) { border:1px solid var(--outline);box-shadow:none; }
+.appShell :is(.searchBox,.bookSearchInput):focus-within { border-color:var(--secondary);box-shadow:0 0 0 2px rgba(91,92,96,.07); }
+.appShell :is(.searchBox,.bookSearchInput) input:focus,.appShell :is(.searchBox,.bookSearchInput) input:focus-visible { outline:none;border:0;box-shadow:none; }
+
+/* Quiet native scroll affordance: no track, arrow buttons or reserved gutter. */
+.appShell * { scrollbar-width:thin;scrollbar-color:rgba(91,92,96,.055) transparent; }
+.appShell *:hover { scrollbar-color:rgba(91,92,96,.16) transparent; }
+.appShell *::-webkit-scrollbar { width:3px;height:3px; }
+.appShell *::-webkit-scrollbar-track { background:transparent; }
+.appShell *::-webkit-scrollbar-thumb { border:0;border-radius:8px;background:rgba(91,92,96,.055); }
+.appShell *:hover::-webkit-scrollbar-thumb { background:rgba(91,92,96,.16); }
+.appShell *::-webkit-scrollbar-button { display:none;width:0;height:0; }
+.page { scrollbar-gutter:auto; }
+.epubContinuousScroll { scrollbar-width:none!important; }
+.epubContinuousScroll::-webkit-scrollbar { display:none!important; }
+
+/* Format proportions use a reading-oriented typographic hierarchy, not bubbles. */
+.formatComposition { flex:1;display:flex;flex-direction:column;justify-content:center;min-height:170px;padding:28px 0 20px; }
+.formatLead { display:flex;align-items:flex-end;justify-content:space-between;gap:24px; }
+.formatLead>div>span { display:block;color:var(--muted);font-size:12px;margin-bottom:8px; }
+.formatLead strong { color:var(--ink);font-size:clamp(28px,3vw,38px);font-weight:600;line-height:1.15;letter-spacing:-1px; }
+.formatLead p { margin:0;color:var(--ink);font-size:44px;line-height:1;letter-spacing:-2px; }
+.formatLead p small { font-size:17px;letter-spacing:0;color:var(--secondary);margin-left:4px; }
+.formatRail { display:flex;gap:4px;height:12px;margin-top:28px;border-radius:4px;overflow:hidden;background:var(--surface-inset); }
+.formatRail i { min-width:2px;border-radius:3px; }
+.formatCaption { margin:12px 0 0;font-size:12px;color:var(--muted);line-height:1.6; }
+.formatNoBooks strong { font-size:44px;font-weight:600;color:var(--ink); }
+.formatNoBooks strong span { font-size:14px;font-weight:400;color:var(--muted);margin-left:8px; }
+.formatNoBooks p { font-size:13px;color:var(--muted);line-height:1.7; }
+.formatWidget .formatRows { display:grid;grid-template-columns:1fr;gap:14px; }
+.formatWidget .formatRows>div { width:auto; }
+.formatWidget .formatRows b { margin-left:auto; }
+
+/* An immersive footer occupies no separate surface and never covers body text. */
+.readerStatus { margin-left:auto;display:flex;align-items:center;gap:12px;white-space:nowrap;font-size:11px;color:inherit; }
+.readerStatus>span,.readerStatus time { display:flex;align-items:center;gap:5px; }
+.readerBottom.quiet { display:flex;justify-content:space-between;transform:none;opacity:1;pointer-events:none;background:transparent;border:0;box-shadow:none;backdrop-filter:none!important;-webkit-backdrop-filter:none!important;min-height:28px;height:auto;padding:7px 20px calc(7px + env(safe-area-inset-bottom));color:var(--secondary);font-size:11px;transition:none;will-change:auto; }
+.readerBottom.quiet>.readerPosition { display:block!important;max-width:none;white-space:nowrap;overflow:visible; }
+.readerBottom.quiet .readerStatus { display:flex!important; }
+.readerDark .readerBottom.quiet { color:rgba(214,211,203,.72); }
+@media(max-width:820px) {
+  .readerBottom.quiet { padding-left:12px;padding-right:12px;font-size:10px;gap:8px; }
+  .readerStatus { font-size:10px;gap:8px; }
+  .formatComposition { padding:24px 0 16px;min-height:150px; }
+}
+@media(prefers-reduced-motion:reduce) { .categoryActions,.categoryButton em,.categoryButton>span { transition:none; } }

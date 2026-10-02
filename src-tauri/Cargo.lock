@@ -2399,7 +2399,7 @@ dependencies = [
 
 [[package]]
 name = "papery-reader"
-version = "0.1.27"
+version = "0.1.28"
 dependencies = [
  "serde",
  "serde_json",

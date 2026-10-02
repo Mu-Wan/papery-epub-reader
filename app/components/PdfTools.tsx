@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight } from "./PaperyIcons";
 
 export function PdfTools({ zoom, fitMode, onZoom, onFit }: {
   zoom: number; fitMode: "width" | "page" | "custom";

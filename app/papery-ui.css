@@ -110,7 +110,7 @@
   transform: scale(.97);
 }
 
-.appShell svg.lucide {
+.appShell svg.paperyIcon {
   stroke-width: 1.75;
   flex-shrink: 0;
 }
@@ -298,7 +298,9 @@
   padding: 0 8px;
   flex: 1;
   min-height: 0;
-  overflow: auto;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
 .sidebarShelf p {

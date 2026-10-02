@@ -46,3 +46,13 @@ test('Corrupt remote files fail validation before local writes',()=>{
  assert.throws(()=>validateSnapshot({...base(),annotations:null}));
  assert.throws(()=>validateSnapshot({...base(),tombstones:{'books:gone':'later'}}),/删除记录无效/);
 });
+test('Backup primary keys, duplicate identifiers and malformed base64 are rejected',()=>{
+ assert.throws(()=>validateSnapshot({...base(),annotations:[{bookId:'a'}]}),/标识/);
+ assert.throws(()=>validateSnapshot({...base(),books:[book('a',100,1),book('a',200,2)]}),/重复/);
+ assert.throws(()=>validateSnapshot({...base(),books:[{...book('a',100,1),blob:'data:text/plain;base64,Y!Q=='}]}),/书籍/);
+ assert.throws(()=>validateSnapshot({...base(),categories:[{name:'c',createdAt:-1}]}),/时间/);
+});
+test('Additive fields in version 1 remain compatible; unknown versions fail closed',()=>{
+ assert.doesNotThrow(()=>validateSnapshot({...base(),futureOptionalField:{enabled:true},books:[{...book('a',100,1),futureBookMetadata:'extension'}]}));
+ assert.throws(()=>validateSnapshot({...base(),version:2}),/格式/);
+});

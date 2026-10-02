@@ -64,6 +64,7 @@ src-tauri/gen/android/gradle/
 /.playwright-cli/
 /releases/
 /tests/books/
+/papery-backup-*.json
 /.qoder/
 /.openai/
 

@@ -1,5 +1,5 @@
 "use client";
-import { BookOpen, Keyboard, PenLine, Smartphone, X } from "lucide-react";
+import { BookOpen, Keyboard, PenLine, Smartphone, X } from "./PaperyIcons";
 import { useDialogFocus } from "./use-dialog-focus";
 
 export function HelpPanel({ onClose }: { onClose: () => void }) {

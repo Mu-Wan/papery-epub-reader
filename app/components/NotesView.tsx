@@ -1,6 +1,6 @@
 "use client";
 import { memo, useMemo, useState } from "react";
-import { BookMarked, Bookmark, Highlighter, Menu, PenLine, Search, Trash2, Underline } from "lucide-react";
+import { BookMarked, Bookmark, Highlighter, Menu, PenLine, Search, Trash2, Underline } from "./PaperyIcons";
 import type { ReaderAnnotation } from "../lib/reader-types";
 import type { LibraryBook } from "./LibraryView";
 import { BookArtwork } from "./BookArtwork";
