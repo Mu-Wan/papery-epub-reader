@@ -23,6 +23,8 @@ jobs:
         run: |
           mkdir -p _site
           cp -R site/. _site/
+          mkdir -p _site/showcase
+          sed 's#<base href="./">#<base href="../">#' site/index.html > _site/showcase/index.html
           cp public/google-drive-callback.html public/google-drive-callback.mjs _site/
           touch _site/.nojekyll
       - uses: actions/configure-pages@v5

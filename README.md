@@ -1,9 +1,9 @@
-<a href="https://mu-wan.github.io/papery-epub-reader/">
+<a href="https://mu-wan.github.io/papery-epub-reader/showcase/">
   <img src="site/assets/hero-showcase.png" alt="Papery：近白书库界面、继续阅读与窄屏布局预览" width="100%">
 </a>
 
 <p align="center"><strong>一个安静、本地优先的阅读空间。</strong><br>Windows · Android &nbsp; / &nbsp; EPUB · PDF · TXT</p>
-<p align="center"><a href="https://github.com/Mu-Wan/papery-epub-reader/releases/tag/papery-v0.1.28">下载 0.1.28</a> &nbsp; · &nbsp; <a href="https://mu-wan.github.io/papery-epub-reader/">项目主页</a> &nbsp; · &nbsp; <a href="docs/Google-Drive-接入.md">同步配置</a> &nbsp; · &nbsp; <a href="https://github.com/Mu-Wan/papery-epub-reader/issues">反馈问题</a></p>
+<p align="center"><a href="https://github.com/Mu-Wan/papery-epub-reader/releases/tag/papery-v0.1.28">下载 0.1.28</a> &nbsp; · &nbsp; <a href="https://mu-wan.github.io/papery-epub-reader/showcase/">项目主页</a> &nbsp; · &nbsp; <a href="docs/Google-Drive-接入.md">同步配置</a> &nbsp; · &nbsp; <a href="https://github.com/Mu-Wan/papery-epub-reader/issues">反馈问题</a></p>
 
 ## 从一本书开始
 
