@@ -1,7 +1,7 @@
 import { loadPdfJs } from "./pdf-loader";
-import { BlobReader, BlobWriter, TextWriter, ZipReader } from "@zip.js/zip.js";
 
 export async function readEpubMetadata(blob: Blob) {
+  const { BlobReader, BlobWriter, TextWriter, ZipReader } = await import("@zip.js/zip.js");
   const zip = new ZipReader(new BlobReader(blob));
   try {
     const entries = await zip.getEntries();

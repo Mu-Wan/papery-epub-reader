@@ -12,11 +12,12 @@ const vendorDir = join(projectRoot, "public", "vendor");
 // 需要复制的文件列表：[源路径, 目标路径]
 const filesToCopy = [
   [
-    join(projectRoot, "node_modules", "pdfjs-dist", "build", "pdf.mjs"),
+    // Same PDF engine/API, with the official older-browser compatibility layer.
+    join(projectRoot, "node_modules", "pdfjs-dist", "legacy", "build", "pdf.min.mjs"),
     join(vendorDir, "pdf.mjs"),
   ],
   [
-    join(projectRoot, "node_modules", "pdfjs-dist", "build", "pdf.worker.min.mjs"),
+    join(projectRoot, "node_modules", "pdfjs-dist", "legacy", "build", "pdf.worker.min.mjs"),
     join(vendorDir, "pdf.worker.min.mjs"),
   ],
   [

@@ -9,20 +9,16 @@ import { pdfPageOffsets, pageAtOffset } from "../lib/reader-math";
 import { loadPdfJs } from "../lib/pdf-loader";
 import { loadSetting, saveSetting } from "../lib/local-library";
 import { PdfTools } from "./PdfTools";
+import { annotationColor, annotationPaint } from "../lib/annotation-color";
+import { readReaderSource as readSource } from "../lib/reader-source";
+import { createEpubBook, fingerprintBuffer } from "../lib/reader-resources.mjs";
+import { paperBackground } from "../lib/reader-paper";
 
-const sourceBuffers=new Map<string,{promise:Promise<ArrayBuffer>;bytes:number}>();
-function readSource(source:string){
-  const cached=sourceBuffers.get(source);if(cached){sourceBuffers.delete(source);sourceBuffers.set(source,cached);return cached.promise;}
-  const entry={promise:fetch(source).then(response=>{if(!response.ok)throw new Error("读取文件失败");return response.arrayBuffer()}),bytes:0};sourceBuffers.set(source,entry);
-  void entry.promise.then(buffer=>{if(sourceBuffers.get(source)!==entry)return;entry.bytes=buffer.byteLength;let total=0;for(const item of sourceBuffers.values())total+=item.bytes;while(total>64*1024*1024||sourceBuffers.size>4){const key=sourceBuffers.keys().next().value!;total-=sourceBuffers.get(key)!.bytes;sourceBuffers.delete(key);}},()=>{if(sourceBuffers.get(source)===entry)sourceBuffers.delete(source)});
-  while(sourceBuffers.size>4)sourceBuffers.delete(sourceBuffers.keys().next().value!);return entry.promise;
-}
-export function releaseReaderSource(source:string){sourceBuffers.delete(source);URL.revokeObjectURL(source);}
 function withTimeout<T>(promise:Promise<T>,ms:number,label:string):Promise<T>{return new Promise<T>((resolve,reject)=>{const timer=setTimeout(()=>reject(new Error(`[Papery] 超时(${ms}ms): ${label}`)),ms);promise.then(v=>{clearTimeout(timer);resolve(v)},e=>{clearTimeout(timer);reject(e)})})}
-export function warmReaderFormat(format:Props["format"]){if(format==="EPUB"){void import("foliate-js/view.js")}if(format==="PDF")void loadPdfJs()}
 
 type Props = {
   source: string;
+  sourceBlob?: Blob;
   format: "TXT" | "EPUB" | "PDF";
   bookId: string;
   settings: ReaderSettings;
@@ -125,8 +121,14 @@ function readerTextColor(pageColor:string){return isDarkBg(pageColor)?"#d6d3cb":
 async function applyEpubDocumentFont(doc:Document,settings:ReaderSettings){
   let install=epubFontInstalls.get(doc);
   if(settings.fontFamily==="lxgw"&&!install){
-    install=(async()=>{const FontFaceCtor=(doc.defaultView as any)?.FontFace??FontFace;let fontSource:string|ArrayBuffer;try{fontSource=await loadEpubFontBuffer()}catch{fontSource=`url("${epubFontUrl}") format("woff2")`}const face=new FontFaceCtor("Papery LXGW WenKai",fontSource,{style:"normal",weight:"100 900"});doc.fonts.add(face);await face.load()})();
-    epubFontInstalls.set(doc,install);
+    // Register synchronously so the paginator's fonts.ready sees this face.
+    // A shared URL lets the browser reuse the same font resource across chapters.
+    const FontFaceCtor=(doc.defaultView as any)?.FontFace??FontFace;
+    const face=new FontFaceCtor("Papery LXGW WenKai",`url("${epubFontBlobUrl||epubFontUrl}") format("woff2")`,{style:"normal",weight:"100 900"});
+    doc.fonts.add(face);
+    const loading:Promise<void>=Promise.resolve(face.load()).then(()=>undefined);
+    install=loading;
+    epubFontInstalls.set(doc,loading);
   }
   let style=doc.getElementById("papery-reader-font") as HTMLStyleElement|null;
   if(!style){style=doc.createElement("style");style.id="papery-reader-font";(doc.head||doc.documentElement).append(style)}
@@ -136,8 +138,8 @@ async function applyEpubDocumentFont(doc:Document,settings:ReaderSettings){
   doc.body?.classList.add("papery-reader-body");
   style.textContent=`
     @font-face{font-family:"Papery LXGW WenKai";font-style:normal;font-weight:100 900;font-display:swap;src:url("${fontUrl}") format("woff2")}
-    html.papery-reader-document.papery-reader-typography,html.papery-reader-document.papery-reader-typography body.papery-reader-body{background:${settings.pageColor}!important;color:${readerTextColor(settings.pageColor)}!important;font-family:${stack}!important;font-size:${settings.fontSize}px!important;line-height:${settings.lineHeight}!important;font-synthesis:none!important;scrollbar-width:none!important}
-    html.papery-reader-document.papery-reader-typography body.papery-reader-body{box-sizing:border-box!important;margin:0!important;padding:0!important;max-width:none!important}
+    html.papery-reader-document.papery-reader-typography,html.papery-reader-document.papery-reader-typography body.papery-reader-body{background:transparent!important;color:${readerTextColor(settings.pageColor)}!important;font-family:${stack}!important;font-size:${settings.fontSize}px!important;line-height:${settings.lineHeight}!important;font-synthesis:none!important;scrollbar-width:none!important}
+    html.papery-reader-document.papery-reader-typography body.papery-reader-body{box-sizing:border-box!important;margin:0!important;padding:0!important;max-width:none!important;}
     html.papery-reader-document.papery-reader-typography body.papery-reader-body *{font-family:inherit!important}
     html.papery-reader-document.papery-reader-typography body.papery-reader-body>:is(main,article,section,div),html.papery-reader-document.papery-reader-typography body.papery-reader-body>:is(main,article,section,div)>:is(main,article,section,div){box-sizing:border-box!important;max-width:none!important;margin-inline:0!important;padding-inline:0!important}
     html.papery-reader-document.papery-reader-typography body.papery-reader-body p{font-size:1em!important;line-height:${settings.lineHeight}!important;margin-bottom:${settings.paragraphSpacing}px!important;text-align:justify!important}
@@ -145,6 +147,9 @@ async function applyEpubDocumentFont(doc:Document,settings:ReaderSettings){
     html.papery-reader-document.papery-reader-typography ::-webkit-scrollbar{display:none!important;width:0!important;height:0!important}`;
   doc.documentElement.style.setProperty("font-family",stack,"important");
   doc.body?.style.setProperty("font-family",stack,"important");
+  // One paper surface beneath the EPUB frames includes the page margins/gutter.
+  doc.documentElement.style.setProperty("background","transparent","important");
+  doc.body?.style.setProperty("background","transparent","important");
   if(install)await install.catch(()=>undefined);
 }
 
@@ -216,7 +221,7 @@ function renderMarkedText(text:string,marks:TextMark[]){
     const annotation=active.find(item=>item.id);
     const action=annotation?` data-annotation-id="${escapeHtml(annotation.id!)}" role="button" tabindex="0" aria-label="编辑笔记"`:"";
     const cue=mark.style==="search"?` data-search-cue="${mark.nonce}"`:"";
-    result+=`<span class="readerMark ${mark.style}"${cue}${action} style="--mark-color:${mark.color}">${body}</span>`;
+    result+=`<span class="readerMark ${mark.style}"${cue}${action} style="--mark-color:${mark.color};--mark-paint:${annotationPaint(mark.color,mark.style)}">${body}</span>`;
   }
   return result;
 }
@@ -231,13 +236,18 @@ function TxtReader({source,bookId,settings,initialLocation,annotations,onApi,onL
   const [viewport,setViewport]=useState({width:900,height:650});
   const parsed=useMemo(()=>parseTxt(text),[text]);
   const sections=useMemo(()=>buildTxtSections(parsed.normalized,parsed.chapters),[parsed.normalized,parsed.chapters]);
-  const initialOffset=resolveTextOffset(parsed.normalized,parseLocator<PortableTextAnchor>(initialLocation)||{});
+  const initialOffset=useMemo(()=>resolveTextOffset(parsed.normalized,parseLocator<PortableTextAnchor>(initialLocation)||{}),[parsed.normalized,initialLocation]);
   const sectionForOffset=useCallback((offset:number)=>{let low=0,high=sections.length-1,found=0;while(low<=high){const middle=(low+high)>>1;if(sections[middle].start<=offset){found=middle;low=middle+1}else high=middle-1}return Math.min(sections.length-1,found)},[sections]);
   const renderStart=settings.flow==="scrolled"?Math.max(0,sectionIndex-1):sectionIndex;
   const renderEnd=settings.flow==="scrolled"?Math.min(sections.length,sectionIndex+2):Math.min(sections.length,sectionIndex+1);
   const rangeStart=sections[renderStart]?.start||0,rangeEnd=sections[Math.max(renderStart,renderEnd-1)]?.end||0;
   const paragraphs=useMemo(()=>paragraphsForRange(parsed.normalized,rangeStart,rangeEnd),[parsed.normalized,rangeStart,rangeEnd]);
-  const txtMarkup=useMemo(()=>{const chapterOffsets=new Set(parsed.chapters.map(chapter=>chapter.offset));return paragraphs.map(paragraph=>{const marks:TextMark[]=[...annotations.flatMap(annotation=>{const loc=parseLocator<{type:string;start?:number;end?:number}>(annotation.locator);return loc?.type==="txt"&&typeof loc.start==="number"&&typeof loc.end==="number"&&loc.end>paragraph.start&&loc.start<paragraph.end?[{start:loc.start-paragraph.start,end:loc.end-paragraph.start,style:annotation.style,color:/^#[0-9a-f]{3,8}$/i.test(annotation.color)?annotation.color:"#f1a052",nonce:0,id:annotation.id}]:[]}),...(searchTarget&&searchTarget.end>paragraph.start&&searchTarget.start<paragraph.end?[{start:searchTarget.start-paragraph.start,end:searchTarget.end-paragraph.start,style:"search",color:"#ffb347",nonce:searchTarget.nonce}]:[])];const tag=chapterOffsets.has(paragraph.start)?"h2":"p";return `<${tag} data-txt-start="${paragraph.start}">${renderMarkedText(paragraph.text,marks)}</${tag}>`}).join("")},[paragraphs,parsed.chapters,annotations,searchTarget]);
+  const txtMarks=useMemo(()=>annotations.flatMap(annotation=>{
+    const loc=parseLocator<{type:string;start?:number;end?:number}>(annotation.locator);
+    return loc?.type==="txt"&&typeof loc.start==="number"&&typeof loc.end==="number"
+      ? [{start:loc.start,end:loc.end,style:annotation.style,color:annotationColor(annotation.color),nonce:0,id:annotation.id}] : [];
+  }),[annotations]);
+  const txtMarkup=useMemo(()=>{const chapterOffsets=new Set(parsed.chapters.map(chapter=>chapter.offset));return paragraphs.map(paragraph=>{const marks:TextMark[]=[...txtMarks.filter(mark=>mark.end>paragraph.start&&mark.start<paragraph.end).map(mark=>({...mark,start:mark.start-paragraph.start,end:mark.end-paragraph.start})),...(searchTarget&&searchTarget.end>paragraph.start&&searchTarget.start<paragraph.end?[{start:searchTarget.start-paragraph.start,end:searchTarget.end-paragraph.start,style:"search",color:"#ffb347",nonce:searchTarget.nonce}]:[])];const tag=chapterOffsets.has(paragraph.start)?"h2":"p";return `<${tag} data-txt-start="${paragraph.start}">${renderMarkedText(paragraph.text,marks)}</${tag}>`}).join("")},[paragraphs,parsed.chapters,txtMarks,searchTarget]);
   const effectiveSpread=settings.flow==="scrolled"||viewport.width<700?"single":settings.spread,step=effectiveSpread==="double"?2:1;
   useLayoutEffect(()=>{renderedPageRef.current=page},[page]);
   const pageGap=effectiveSpread==="double"?28:24,logicalPageWidth=effectiveSpread==="double"?Math.max(280,(viewport.width-28)/2):viewport.width;
@@ -322,8 +332,8 @@ function EpubReader(props:Props){
 function foliateStyles(settings:ReaderSettings,fontUrl:string){
   return `
     @font-face{font-family:"Papery LXGW WenKai";font-style:normal;font-weight:100 900;font-display:swap;src:url("${fontUrl}") format("woff2")}
-    :root{--theme-bg-color:${settings.pageColor};background:${settings.pageColor}!important;color:${readerTextColor(settings.pageColor)}!important;scrollbar-width:none!important}
-    html,body{background:${settings.pageColor}!important;color:${readerTextColor(settings.pageColor)}!important;scrollbar-width:none!important}
+    :root{--theme-bg-color:transparent;background:transparent!important;color:${readerTextColor(settings.pageColor)}!important;scrollbar-width:none!important}
+    html,body{background:transparent!important;color:${readerTextColor(settings.pageColor)}!important;scrollbar-width:none!important}
     body{box-sizing:border-box!important;margin:0!important;padding:0!important;max-width:none!important;font-family:${epubFontStack(settings.fontFamily)}!important;font-size:${settings.fontSize}px!important;line-height:${settings.lineHeight}!important;font-synthesis:none!important;}
     body *{font-family:inherit!important}
     body>:is(main,article,section,div),body>:is(main,article,section,div)>:is(main,article,section,div){box-sizing:border-box!important;max-width:none!important;margin-inline:0!important;padding-inline:0!important}
@@ -349,10 +359,10 @@ function applyFoliateLayout(view:any,host:HTMLElement|null,settings:ReaderSettin
   const maxInline=double?Math.ceil(width/2):width;
   const attributes={gap:`${gapPercent}%`,edge:"0px","max-column-count":double?"2":"1","max-inline-size":`${maxInline}px`};
   for(const [name,value] of Object.entries(attributes))if(view.renderer.getAttribute(name)!==value)view.renderer.setAttribute(name,value);
-  if(updateStyles)view.renderer.setStyles(foliateStyles(settings,fontUrl));
+  if(updateStyles){const styles=foliateStyles(settings,fontUrl);if(view.__paperyStyles!==styles){view.renderer.setStyles(styles);view.__paperyStyles=styles}}
 }
 
-function FoliateEpubReader({source,bookId,settings,initialLocation,annotations,onApi,onLocation,onToc,onSelection,onAnnotation,onEdgeCue,onToggleUi}:Props){
+function FoliateEpubReader({source,sourceBlob,bookId,settings,initialLocation,annotations,onApi,onLocation,onToc,onSelection,onAnnotation,onEdgeCue,onToggleUi}:Props){
   const host=useRef<HTMLDivElement>(null),viewRef=useRef<any>(null),annotationsRef=useRef(annotations),settingsRef=useRef(settings);
   const callbacksRef=useRef({onLocation,onToc,onSelection,onAnnotation,onEdgeCue,onToggleUi});
   const currentLocator=useRef(initialLocation),tocRef=useRef<TocItem[]>([]),searchCueTimer=useRef<number|null>(null);
@@ -376,11 +386,10 @@ function FoliateEpubReader({source,bookId,settings,initialLocation,annotations,o
     const readySignal=new Promise<void>(resolve=>{markReady=resolve});
     (async()=>{
       console.log("[Papery] EPUB init: start");
-      const [fontUrl,[{Overlayer},buffer]]=await withTimeout(Promise.all([getEpubFontBlobUrl(),Promise.all([import("foliate-js/overlayer.js"),readSource(source)])]),20000,"加载 EPUB 模块与文件");
+      const [fontUrl,{Overlayer},book]=await withTimeout(Promise.all([settingsRef.current.fontFamily==="lxgw"?getEpubFontBlobUrl():Promise.resolve(epubFontUrl),import("foliate-js/overlayer.js"),createEpubBook(source,sourceBlob),import("foliate-js/view.js")]),20000,"加载 EPUB 模块与文件");
       fontBlobUrl=fontUrl;
-      console.log("[Papery] EPUB init: source loaded, buffer size=",buffer.byteLength);
+      console.log("[Papery] EPUB init: archive ready");
       if(settingsRef.current.fontFamily==="lxgw")loadEpubFontBuffer().catch(()=>undefined);
-      await withTimeout(import("foliate-js/view.js"),15000,"导入分页引擎");
       console.log("[Papery] EPUB init: view.js imported");
       if(cancelled||!host.current)return;
       view=document.createElement("foliate-view") as any;
@@ -388,7 +397,7 @@ function FoliateEpubReader({source,bookId,settings,initialLocation,annotations,o
       host.current.append(view);viewRef.current=view;
       if(settingsRef.current.fontFamily==="lxgw")preloadEpubFont();
       const continuous=settingsRef.current.flow==="scrolled"?(await import("../lib/epub-continuous")).createContinuousRenderer():undefined;
-      await withTimeout(view.open(new File([buffer],`${bookId}.epub`,{type:"application/epub+zip"}),{renderer:continuous}),20000,"解析 EPUB 结构");
+      await withTimeout(view.open(book,{renderer:continuous}),20000,"解析 EPUB 结构");
       console.log("[Papery] EPUB init: book opened, sections=",view.book?.sections?.length);
       if(cancelled)return;
 
@@ -406,7 +415,7 @@ function FoliateEpubReader({source,bookId,settings,initialLocation,annotations,o
       void saveSetting(`analysis:${bookId}`,{totalPages:Math.max(1,view.book.sections?.length||1),analyzedAt:Date.now(),pagination:"foliate-locations"});
 
       const pulseHighlight=(rects:any[],options:any)=>{const element=Overlayer.highlight(rects,{...options,padding:2}),outline=Overlayer.outline(rects,{color:"#D47643",width:1.5,padding:3,radius:3});element.append(outline);element.style.opacity=".82";element.style.mixBlendMode="multiply";if(!matchMedia("(prefers-reduced-motion: reduce)").matches)requestAnimationFrame(()=>element.animate?.([{opacity:.35},{opacity:.9},{opacity:.82}],{duration:280,easing:"ease-out"}));return element};
-      const drawAnnotation=(event:any)=>{const {draw,annotation,doc}=event.detail;const isCue=String(annotation.id||"").startsWith("papery-cue-");if(!isCue&&!annotationsRef.current.some(item=>item.id===annotation.id))return;if(isCue&&cueAnnotation.current&&!annotationsRef.current.some(item=>item.id===cueAnnotation.current?.id))return;const writingMode=doc?.defaultView?.getComputedStyle(doc.documentElement).writingMode,options={color:annotation.color||"#f1a052",writingMode};draw(String(annotation.id||"").startsWith("papery-cue-")?pulseHighlight:annotation.style==="underline"?Overlayer.underline:Overlayer.highlight,options)};
+      const drawAnnotation=(event:any)=>{const {draw,annotation,doc}=event.detail;const isCue=String(annotation.id||"").startsWith("papery-cue-");if(!isCue&&!annotationsRef.current.some(item=>item.id===annotation.id))return;if(isCue&&cueAnnotation.current&&!annotationsRef.current.some(item=>item.id===cueAnnotation.current?.id))return;const writingMode=doc?.defaultView?.getComputedStyle(doc.documentElement).writingMode,options={color:isCue?annotation.color||"#ffb347":annotationColor(annotation.color),writingMode};draw(isCue?pulseHighlight:(rects:any[],opts:any)=>{const element=annotation.style==="underline"?Overlayer.underline(rects,opts):Overlayer.highlight(rects,opts);element.style.opacity=annotation.style==="underline"?".86":".38";return element},options)};
       const addVisibleAnnotations=(index:number)=>{for(const annotation of annotationsRef.current){const loc=parseLocator<{type:string;cfi?:string}>(annotation.locator);if(loc?.type!=="epub"||!loc.cfi||annotation.style==="bookmark")continue;try{if(view.resolveNavigation(loc.cfi)?.index===index)void view.addAnnotation({value:loc.cfi,style:annotation.style,color:annotation.color,id:annotation.id})}catch{}}};
       // NOTE: do NOT call section.load()/unload() manually here. foliate-js's Loader
       // ref-counts blob URLs of shared resources (CSS/fonts) across chapters; external
@@ -483,9 +492,9 @@ function FoliateEpubReader({source,bookId,settings,initialLocation,annotations,o
       onApi({next:()=>{void safeNavigate("next")},prev:()=>{void safeNavigate("prev")},goTo:(locator:string)=>{navigation=navigation.then(()=>cancelled?undefined:goTo(locator)).catch(reason=>console.warn("[Papery] jump failed",reason));},search});
     })().catch(reason=>{if(!cancelled){console.error("[Papery] EPUB init error:",reason);setError(reason instanceof Error?reason.message:"EPUB 分页器初始化失败");setStatus("error")}});
     return()=>{cancelled=true;initGuard.current=false;onApi(null);callbacksRef.current.onEdgeCue?.(null);activeDocumentCleanup?.();if(wheelPoller!==undefined)window.clearInterval(wheelPoller);if(onPaginatorLoad)try{view?.renderer?.removeEventListener?.("load",onPaginatorLoad)}catch{}if(hostWheel)host.current?.removeEventListener("wheel",hostWheel);if(searchCueTimer.current!==null)window.clearTimeout(searchCueTimer.current);try{view?.close?.();view?.book?.destroy?.();view?.remove?.()}catch{}if(viewRef.current===view)viewRef.current=null};
-  },[source,bookId,onApi]);
+  },[source,sourceBlob,bookId,onApi]);
 
-  useEffect(()=>{const view=viewRef.current,element=host.current;if(!view||!element||status!=="ready")return;getEpubFontBlobUrl().then(fontUrl=>{applyFoliateLayout(view,element,settings,fontUrl);for(const item of view.renderer.getContents?.()||[])if(item.doc)void applyEpubDocumentFont(item.doc,settings)});let frame=0,lastWidth=element.clientWidth;const observer=new ResizeObserver(()=>{const width=element.clientWidth;if(Math.abs(width-lastWidth)<1)return;lastWidth=width;cancelAnimationFrame(frame);frame=requestAnimationFrame(()=>getEpubFontBlobUrl().then(fontUrl=>applyFoliateLayout(view,element,settings,fontUrl,false)))});observer.observe(element);return()=>{cancelAnimationFrame(frame);observer.disconnect()}},[settings,status]);
+  useEffect(()=>{const view=viewRef.current,element=host.current;if(!view||!element||status!=="ready")return;(settings.fontFamily==="lxgw"?getEpubFontBlobUrl():Promise.resolve(epubFontUrl)).then(fontUrl=>{applyFoliateLayout(view,element,settings,fontUrl);for(const item of view.renderer.getContents?.()||[])if(item.doc)void applyEpubDocumentFont(item.doc,settings)});let frame=0,lastWidth=element.clientWidth;const observer=new ResizeObserver(()=>{const width=element.clientWidth;if(Math.abs(width-lastWidth)<1)return;lastWidth=width;cancelAnimationFrame(frame);frame=requestAnimationFrame(()=>(settings.fontFamily==="lxgw"?getEpubFontBlobUrl():Promise.resolve(epubFontUrl)).then(fontUrl=>applyFoliateLayout(view,element,settings,fontUrl,false)))});observer.observe(element);return()=>{cancelAnimationFrame(frame);observer.disconnect()}},[settings,status]);
   useEffect(()=>{
     const view=viewRef.current;if(!view||status!=="ready")return;let cancelled=false;
     markUpdates.current=markUpdates.current.catch(()=>undefined).then(async()=>{
@@ -500,7 +509,7 @@ function FoliateEpubReader({source,bookId,settings,initialLocation,annotations,o
   },[annotations,status]);
 
   const {horizontal:rawHorizontal,vertical}=epubMargins(settings),horizontal=rawHorizontal;
-  return <div className={`epubHost foliateHost flow-${settings.flow} spread-${settings.spread} texture-${settings.paperTexture}`} style={{background:settings.pageColor}}>
+  return <div className={`epubHost foliateHost flow-${settings.flow} spread-${settings.spread}`}>
     <div ref={host} className="foliateRendition" style={{left:`${horizontal}%`,right:`${horizontal}%`,top:`${vertical}%`,bottom:`${vertical}%`}}/>
     {status==="loading"&&<div className="epubLoadingMinimal"><span/></div>}
     {status==="error"&&<div className="readerError"><strong>EPUB 打开失败</strong><p>{error}</p></div>}
@@ -510,7 +519,7 @@ function FoliateEpubReader({source,bookId,settings,initialLocation,annotations,o
 type PdfRect={x:number;y:number;width:number;height:number};
 type PdfLocator={type:"pdf";page:number;offset?:number;rects?:PdfRect[]};
 
-const PdfPage=memo(function PdfPage({pdf,pageNumber,annotations,onSelection,onAnnotation,onRendered,scaleHint,zoom,pageColor}:any){
+const PdfPage=memo(function PdfPage({pdf,pageNumber,annotations,onSelection,onAnnotation,onRendered,scaleHint,zoom,pageColor,paperTexture}:any){
   const canvas=useRef<HTMLCanvasElement>(null);
   const textLayer=useRef<HTMLDivElement>(null);
   const wrap=useRef<HTMLDivElement>(null);
@@ -554,9 +563,9 @@ const PdfPage=memo(function PdfPage({pdf,pageNumber,annotations,onSelection,onAn
     onSelection({quote:selection.toString().trim(),locator:JSON.stringify({type:"pdf",page:pageNumber,rects}),rect:{x:rect.left,y:rect.top,width:rect.width,height:rect.height}});
     selection.removeAllRanges();
   };
-  return <div ref={wrap} className="pdfPage" data-pdf-page={pageNumber} style={{width:size.width,height:size.height,background:pageColor}} onMouseUp={select} onTouchEnd={select}>
+  return <div ref={wrap} className="pdfPage" data-pdf-page={pageNumber} style={{width:size.width,height:size.height,background:pageColor,backgroundImage:paperBackground(paperTexture)}} onMouseUp={select} onTouchEnd={select}>
     <canvas ref={canvas}/><div ref={textLayer} className="pdfTextLayer"/>
-    {pageMarks.map(({annotation,rect}:any,index:number)=><button type="button" aria-label="编辑笔记" onClick={event=>{event.stopPropagation();onAnnotation?.(annotation)}} onPointerDown={event=>event.stopPropagation()} key={`${annotation.id}-${index}`} className={`pdfAnnotation ${annotation.style}`} style={{left:`${rect.x*100}%`,top:`${rect.y*100}%`,width:`${rect.width*100}%`,height:`${rect.height*100}%`,"--mark-color":annotation.color} as React.CSSProperties}/>)}
+    {pageMarks.map(({annotation,rect}:any,index:number)=><button type="button" aria-label="编辑笔记" onClick={event=>{event.stopPropagation();onAnnotation?.(annotation)}} onPointerDown={event=>event.stopPropagation()} key={`${annotation.id}-${index}`} className={`pdfAnnotation ${annotation.style}`} style={{left:`${rect.x*100}%`,top:`${rect.y*100}%`,width:`${rect.width*100}%`,height:`${rect.height*100}%`,"--mark-color":annotationColor(annotation.color),"--mark-paint":annotationPaint(annotation.color,annotation.style)} as React.CSSProperties}/>)}
   </div>;
 });
 
@@ -587,7 +596,7 @@ function PdfReader({source,bookId,settings,initialLocation,annotations,onApi,onL
   const textCache=useRef(new Map<number,string>());
   const handlePageRendered=useCallback(()=>setFirstPageReady(true),[]);
   useEffect(()=>{const element=host.current;if(!element||!pdf)return;const update=()=>{setHostWidth(Math.max(320,element.clientWidth));setHostHeight(Math.max(320,element.clientHeight));setLayoutReady(true)};const observer=new ResizeObserver(update);observer.observe(element);update();return()=>observer.disconnect()},[pdf]);
-  useEffect(()=>{let doc:any,cancelled=false,timer=0;(async()=>{const [pdfjs,buffer]=await Promise.all([loadPdfJs(),readSource(source)]);pdfjs.GlobalWorkerOptions.workerSrc="/vendor/pdf.worker.min.mjs";doc=await pdfjs.getDocument({data:buffer.slice(0)}).promise;if(cancelled){await doc.destroy();return;}const fingerprint=await crypto.subtle.digest("SHA-256",buffer).then(hash=>Array.from(new Uint8Array(hash),byte=>byte.toString(16).padStart(2,"0")).join("")).catch(()=>"");const cached=await loadSetting<{fingerprint?:string;sourceBytes?:number;pageRatios?:number[]}>(`analysis:${bookId}`).catch(()=>null);const valid=Boolean(fingerprint&&cached&&cached.fingerprint===fingerprint&&cached.sourceBytes===buffer.byteLength&&Array.isArray(cached.pageRatios)&&cached.pageRatios.length===doc.numPages&&cached.pageRatios.every(value=>Number.isFinite(value)&&value>0));const ratios:number[]=valid?cached!.pageRatios!:[];for(let start=1;!valid&&start<=doc.numPages;start+=12){if(cancelled){await doc.destroy();return;}ratios.push(...await Promise.all(Array.from({length:Math.min(12,doc.numPages-start+1)},async(_,i)=>{const p=await doc.getPage(start+i),v=p.getViewport({scale:1});return v.height/v.width})));}if(cancelled)return;setPageRatios(ratios);setPage(Math.min(initialPage,doc.numPages));setPdf(doc);void saveSetting(`analysis:${bookId}`,{...cached,totalPages:doc.numPages,analyzedAt:Date.now(),fingerprint,sourceBytes:buffer.byteLength,pageRatios:ratios});const first=await doc.getPage(1),viewport=first.getViewport({scale:1});setPageRatio(viewport.height/viewport.width);timer=window.setTimeout(()=>setRenderRadius(1),160);const outline=await doc.getOutline();const result:TocItem[]=[];const walk=async(items:any[],level=0)=>{for(const item of items||[]){let pageNumber=1;try{const dest=typeof item.dest==="string"?await doc.getDestination(item.dest):item.dest;if(dest?.[0])pageNumber=await doc.getPageIndex(dest[0])+1}catch{}result.push({id:`pdf-${result.length}`,label:item.title||`第 ${pageNumber} 页`,level,page:pageNumber,locator:JSON.stringify({type:"pdf",page:pageNumber})});await walk(item.items||[],level+1)}};await walk(outline||[]);if(!result.length){for(let value=1;value<=doc.numPages;value++)result.push({id:`pdf-${value}`,label:`第 ${value} 页`,level:0,page:value,locator:JSON.stringify({type:"pdf",page:value})})}setToc(result);onToc(result)})().catch(reason=>{if(!cancelled)setError(reason instanceof Error?reason.message:"PDF 解析失败")});return()=>{cancelled=true;clearTimeout(timer);doc?.destroy?.()}},[source,bookId,onToc]);
+  useEffect(()=>{let doc:any,cancelled=false,timer=0;(async()=>{const [pdfjs,buffer]=await Promise.all([loadPdfJs(),readSource(source)]);pdfjs.GlobalWorkerOptions.workerSrc="/vendor/pdf.worker.min.mjs";doc=await pdfjs.getDocument({data:buffer.slice(0)}).promise;if(cancelled){await doc.destroy();return;}const fingerprint=await fingerprintBuffer(buffer).catch(()=>"");const cached=await loadSetting<{fingerprint?:string;sourceBytes?:number;pageRatios?:number[]}>(`analysis:${bookId}`).catch(()=>null);const valid=Boolean(fingerprint&&cached&&cached.fingerprint===fingerprint&&cached.sourceBytes===buffer.byteLength&&Array.isArray(cached.pageRatios)&&cached.pageRatios.length===doc.numPages&&cached.pageRatios.every(value=>Number.isFinite(value)&&value>0));const ratios:number[]=valid?cached!.pageRatios!:[];for(let start=1;!valid&&start<=doc.numPages;start+=12){if(cancelled){await doc.destroy();return;}ratios.push(...await Promise.all(Array.from({length:Math.min(12,doc.numPages-start+1)},async(_,i)=>{const p=await doc.getPage(start+i),v=p.getViewport({scale:1});return v.height/v.width})));}if(cancelled)return;setPageRatios(ratios);setPage(Math.min(initialPage,doc.numPages));setPdf(doc);void saveSetting(`analysis:${bookId}`,{...cached,totalPages:doc.numPages,analyzedAt:Date.now(),fingerprint,sourceBytes:buffer.byteLength,pageRatios:ratios});const first=await doc.getPage(1),viewport=first.getViewport({scale:1});setPageRatio(viewport.height/viewport.width);timer=window.setTimeout(()=>setRenderRadius(1),160);const outline=await doc.getOutline();const result:TocItem[]=[];const walk=async(items:any[],level=0)=>{for(const item of items||[]){let pageNumber=1;try{const dest=typeof item.dest==="string"?await doc.getDestination(item.dest):item.dest;if(dest?.[0])pageNumber=await doc.getPageIndex(dest[0])+1}catch{}result.push({id:`pdf-${result.length}`,label:item.title||`第 ${pageNumber} 页`,level,page:pageNumber,locator:JSON.stringify({type:"pdf",page:pageNumber})});await walk(item.items||[],level+1)}};await walk(outline||[]);if(!result.length){for(let value=1;value<=doc.numPages;value++)result.push({id:`pdf-${value}`,label:`第 ${value} 页`,level:0,page:value,locator:JSON.stringify({type:"pdf",page:value})})}setToc(result);onToc(result)})().catch(reason=>{if(!cancelled)setError(reason instanceof Error?reason.message:"PDF 解析失败")});return()=>{cancelled=true;clearTimeout(timer);doc?.destroy?.()}},[source,bookId,onToc]);
   const widthHint=Math.max(260,Math.min(1200,hostWidth));
   const pageHint=Math.max(240,Math.min(widthHint,hostHeight/pageRatio));
   const scaleHint=fitMode==="page"?pageHint:widthHint;
@@ -622,7 +631,7 @@ function PdfReader({source,bookId,settings,initialLocation,annotations,onApi,onL
     onPointerCancel={()=>{drag.current=null;setPanning(false)}} style={{background:settings.pageColor}}>
     <div className="pdfVirtualTrack" style={{width:trackWidth}}>
       <div style={{height:offsets[first-1]||0}}/>
-      {pages.map(pageNumber=><div className="pdfSlot" style={{height:offsets[pageNumber]-offsets[pageNumber-1]}} key={pageNumber}><PdfPage pdf={pdf} pageNumber={pageNumber} annotations={annotations} onSelection={onSelection} onAnnotation={onAnnotation} onRendered={handlePageRendered} scaleHint={scaleHint} zoom={zoom} pageColor={settings.pageColor}/></div>)}
+      {pages.map(pageNumber=><div className="pdfSlot" style={{height:offsets[pageNumber]-offsets[pageNumber-1]}} key={pageNumber}><PdfPage pdf={pdf} pageNumber={pageNumber} annotations={annotations} onSelection={onSelection} onAnnotation={onAnnotation} onRendered={handlePageRendered} scaleHint={scaleHint} zoom={zoom} pageColor={settings.pageColor} paperTexture={settings.paperTexture}/></div>)}
       <div style={{height:Math.max(0,(offsets[pdf.numPages]||0)-(offsets[last]||0))}}/>
     </div>
     {!firstPageReady&&<div className="epubLoadingMinimal"><span/></div>}

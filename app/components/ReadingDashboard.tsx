@@ -30,7 +30,7 @@ export const ReadingDashboard = memo(function ReadingDashboard({ books, sessions
   });
 
   return <div className="page statsPage">
-    <div className="pageHeader"><div className="headerTitle"><button className="menuButton" aria-label="打开导航" onClick={onMenu}><Menu size={21}/></button><h1>阅读数据</h1></div>
+    <div className="pageHeader"><div className="headerTitle"><button className="menuButton" aria-label="打开导航" onClick={onMenu}><Menu size={21}/></button><h1>{range === 7 ? "本周数据" : "近30天数据"}</h1></div>
       <SelectionGroup className="segmented rangeSwitch" label="统计时间范围">{[7, 30].map(value => <button key={value} aria-pressed={range === value} className={range === value ? "active" : ""} onClick={() => { setIntro(false); setRange(value); }}>近 {value} 天</button>)}</SelectionGroup>
     </div>
     <div className={`readingDashboard ${intro ? "chartIntro" : ""}`}>

@@ -1,7 +1,7 @@
 /* Papery: 4px spacing, three structural radii, two type weights. */
 
 .appShell {
-  --canvas: #FCFBFA;
+  --canvas: #F9F8F7;
   --surface: #FBFAF9;
   --surface-muted: #F8F6F4;
   --surface-inset: #F5F2EF;
@@ -641,8 +641,8 @@
 }
 
 .searchBox:focus-within {
-  outline: 2px solid var(--blue-deep);
-  outline-offset: 2px;
+  outline: none;
+  outline-offset: 0;
 }
 
 .appShell .searchBox input:focus-visible { outline: none; }
@@ -1341,7 +1341,12 @@
 .bookMenu .deleteBookAction {
   color: var(--ink);
   margin-top: 8px;
+  background: transparent;
+}
+
+.bookMenu .deleteBookAction:hover,.bookMenu .deleteBookAction:focus-visible {
   background: var(--orange-soft);
+  color: var(--orange-text);
 }
 
 .emptyLibrary {

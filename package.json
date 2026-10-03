@@ -1,6 +1,6 @@
 {
   "name": "papery-reader",
-  "version": "0.1.28",
+  "version": "0.1.32",
   "private": true,
   "engines": {
     "node": ">=22.13.0"
@@ -11,7 +11,7 @@
     "dev": "cross-env PAPERY_STATIC_BUILD=1 next dev",
     "build": "node scripts/tauri-build.mjs",
     "start": "WRANGLER_LOG_PATH=.wrangler/wrangler.log vinext start",
-    "test": "node --test tests/reader-core.test.mjs tests/drive-auth.test.mjs tests/drive-sync-upload.test.mjs tests/reading-stats.test.mjs",
+    "test": "node --test tests/reader-core.test.mjs tests/drive-auth.test.mjs tests/drive-sync-upload.test.mjs tests/reading-stats.test.mjs tests/reader-resources.test.mjs",
     "validate:artifact": "bash scripts/validate-artifact.sh",
     "lint": "bash scripts/sites-env.sh -- eslint . --ignore-pattern dist --ignore-pattern .next --ignore-pattern public/vendor",
     "db:generate": "bash scripts/sites-env.sh -- drizzle-kit generate",
