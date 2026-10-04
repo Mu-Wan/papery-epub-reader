@@ -10,7 +10,7 @@ export function useDialogFocus<T extends HTMLElement = HTMLDivElement>(onClose: 
     const previous = document.activeElement as HTMLElement | null;
     const element = root.current;
     if (!element) return;
-    const controls = () => Array.from(element.querySelectorAll<HTMLElement>('button:not(:disabled),input,textarea,select,[tabindex="0"]')).filter(control => control.getClientRects().length > 0);
+    const controls = () => Array.from(element.querySelectorAll<HTMLElement>('button:not(:disabled),a[href],input,textarea,select,[tabindex="0"]')).filter(control => control.getClientRects().length > 0).sort((a,b)=>a===b?0:a.compareDocumentPosition(b)&Node.DOCUMENT_POSITION_FOLLOWING?-1:1);
     controls()[0]?.focus();
     const key = (event: KeyboardEvent) => {
       const dialogs = Array.from(document.querySelectorAll<HTMLElement>('[role="dialog"]'));

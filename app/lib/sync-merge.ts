@@ -20,6 +20,7 @@ export function validateSnapshot(value: unknown): asserts value is SyncSnapshot 
       for (const field of ["updatedAt", "createdAt", "started_at"]) if (item[field] !== undefined && (typeof item[field] !== "number" || !Number.isFinite(item[field]) || Number(item[field]) < 0)) throw new Error("备份记录时间无效");
     }
   }
+  for(const setting of v.settings)if(setting.key==="category-order"&&(!Array.isArray(setting.value)||setting.value.some(name=>typeof name!=="string"||!name.trim())))throw new Error("备份分类顺序无效");
   if (v.tombstones !== undefined) {
     if (!v.tombstones || typeof v.tombstones !== "object" || Array.isArray(v.tombstones)) throw new Error("同步删除记录无效");
     for (const [key,time] of Object.entries(v.tombstones)) {
@@ -32,7 +33,7 @@ export function validateSnapshot(value: unknown): asserts value is SyncSnapshot 
   for (const session of v.sessions) if (typeof session.book_id !== "string" || !session.book_id || typeof session.duration_seconds !== "number" || !Number.isFinite(session.duration_seconds) || session.duration_seconds < 0) throw new Error("备份阅读记录无效");
 }
 
-export const portableSetting = (key: string) => key === "app" || key === "last-read-book-id" || key.startsWith("reader:");
+export const portableSetting = (key: string) => key === "app" || key === "category-order" || key === "last-read-book-id" || key.startsWith("reader:");
 
 const stamp = (item: SyncRecord) => Number(item.updatedAt || item.createdAt || item.started_at || 0);
 /** Deterministic last-edit-wins. Progress may move backwards; tombstones prevent resurrection. */

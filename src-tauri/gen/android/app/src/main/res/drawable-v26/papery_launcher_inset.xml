@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Adaptive launchers crop the 108dp layer to about 72dp. Retain breathing room. -->
+<inset xmlns:android="http://schemas.android.com/apk/res/android"
+    android:drawable="@mipmap/ic_launcher_foreground"
+    android:insetLeft="8%"
+    android:insetTop="8%"
+    android:insetRight="8%"
+    android:insetBottom="8%" />

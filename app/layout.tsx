@@ -3,6 +3,9 @@ import localFont from "next/font/local";
 import "./globals.css";
 import "./papery-ui.css";
 import "./reader-repairs.css";
+import "./mobile-repairs.css";
+import "./epub-references.css";
+import "./control-repairs.css";
 
 // Use local font files to avoid network dependency during build.
 // Geist fonts are cached in .vinext/fonts/ from previous builds.

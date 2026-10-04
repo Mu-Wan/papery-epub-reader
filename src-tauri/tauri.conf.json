@@ -1,6 +1,6 @@
 {
   "productName": "Papery Reader",
-  "version": "0.1.32",
+  "version": "0.1.40",
   "identifier": "com.papery.reader",
   "build": {
     "beforeDevCommand": "",
@@ -16,7 +16,8 @@
         "height": 800,
         "minWidth": 800,
         "minHeight": 600,
-        "decorations": false
+        "decorations": false,
+        "dragDropEnabled": false
       }
     ],
     "security": {

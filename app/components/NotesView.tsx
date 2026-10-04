@@ -1,4 +1,6 @@
 "use client";
+import { PaperySelect } from "./PaperySelect";
+import { readingPercent } from "../lib/reading-progress";
 import { memo, useDeferredValue, useMemo, useState } from "react";
 import { BookMarked, Bookmark, Highlighter, Menu, PenLine, Search, Trash2, Underline } from "./PaperyIcons";
 import type { ReaderAnnotation } from "../lib/reader-types";
@@ -18,7 +20,7 @@ const NoteEntry = memo(function NoteEntry({ note, timestamp, bookTitle, onOpen, 
       <span className="noteKind">{note.style === "bookmark" ? <Bookmark size={17}/> : note.style === "underline" ? <Underline size={17}/> : <Highlighter size={17}/>}</span>
       <span className="noteContent"><span className="noteQuote">{note.quote || note.chapterTitle}</span>{note.note && <span className="noteBody">{note.note}</span>}</span>
     </button>
-    <footer><span>{[bookTitle, note.chapterTitle, `${Math.round(note.progress)}%`].filter(Boolean).join(" · ")}</span>
+    <footer><span>{[bookTitle, note.chapterTitle, `${readingPercent(note.progress)}%`].filter(Boolean).join(" · ")}</span>
       <time dateTime={timestamp ? new Date(timestamp).toISOString() : undefined}>{timestamp ? dateFormatter.format(timestamp) : "日期未记录"}</time>
       <button aria-label="编辑笔记" onClick={() => onEdit(note)}><PenLine size={16}/></button>
       <button aria-label="删除笔记" className="danger" onClick={() => onDelete(note)}><Trash2 size={16}/></button>
@@ -56,8 +58,8 @@ export const NotesView = memo(function NotesView({ annotations, books, onMenu, o
       </SelectionGroup></aside>
       <section className="noteList" aria-label="笔记时间线">
         <div className="noteToolbar"><label className="searchBox"><Search size={17}/><input aria-label="搜索笔记内容" value={query} onChange={event => setQuery(event.target.value)} placeholder="搜索笔记内容"/></label>
-          <select className="noteBookSelect" aria-label="筛选笔记书籍" value={bookId} onChange={event => { setBookId(event.target.value); setMonthKey("全部"); }}><option value="全部">全部书籍</option>{books.map(book => <option key={book.id} value={book.id}>{book.title}</option>)}</select>
-          <select className="noteMonthSelect" aria-label="按年月筛选笔记" value={selectedMonth} onChange={event => setMonthKey(event.target.value)}><option value="全部">全部时间</option>{months.map(month => <option key={month.key} value={month.key}>{month.year ? `${month.year} 年 ${month.month} 月` : "日期未记录"}</option>)}</select>
+          <PaperySelect className="noteBookSelect" label="筛选笔记书籍" value={bookId} onChange={next=>{setBookId(next);setMonthKey("全部")}} options={[{value:"全部",label:"全部书籍"},...books.map(book=>({value:book.id,label:book.title}))]}/>
+          <PaperySelect className="noteMonthSelect" label="按年月筛选笔记" value={selectedMonth} onChange={setMonthKey} options={[{value:"全部",label:"全部时间"},...months.map(month=>({value:month.key,label:month.year?`${month.year} 年 ${month.month} 月`:"日期未记录"}))]}/>
           <span aria-live="polite">{filtered.length} 条</span>
         </div>
         <div className="notesTimeline" aria-busy={query.toLowerCase() !== search}>

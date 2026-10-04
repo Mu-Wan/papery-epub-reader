@@ -1,3 +1,5 @@
+import { isScrollEnd } from "./reading-progress";
+import { createReadingScheduler, momentumStep } from "./reading-scheduler";
 /* eslint-disable @typescript-eslint/no-explicit-any */
 // Foliate's navigation, CFI and annotations are shared by both reading modes.
 // This renderer keeps adjacent chapters in one scroll surface and balances every
@@ -20,6 +22,8 @@ export function createContinuousRenderer(): HTMLElement {
       private closed = false;
       private navigating = false;
       private frame = 0;
+      private updates = createReadingScheduler(() => this.updateVisible());
+      private flushUpdates = () => {cancelAnimationFrame(this.frame);this.frame=0;this.updates.request(true);};
       private momentum = 0;
       private resize: ResizeObserver;
 
@@ -28,6 +32,9 @@ export function createContinuousRenderer(): HTMLElement {
         this.scroller.className = "epubContinuousScroll";
         Object.assign(this.scroller.style, { position: "relative", height: "100%", width: "100%", overflowY: "auto", overflowX: "hidden", overscrollBehavior: "contain", scrollbarWidth: "none", overflowAnchor: "none" });
         this.scroller.addEventListener("scroll", this.schedule, { passive: true });
+        window.addEventListener("pagehide",this.flushUpdates);
+        window.addEventListener("blur",this.flushUpdates);
+        document.addEventListener("visibilitychange",this.flushUpdates);
         this.resize = new ResizeObserver(() => {
           if (this.closed) return;
           const anchor = this.visibleRange(this.entries[this.currentIndex]);
@@ -149,7 +156,8 @@ export function createContinuousRenderer(): HTMLElement {
             const advance = (time: number) => {
               if (this.closed || Math.abs(velocity) < .025) return;
               const before = this.scroller.scrollTop;
-              this.scroller.scrollTop += velocity * Math.min(32, time - previous); previous = time; velocity *= .92;
+              const step=momentumStep(velocity,time-previous);previous=time;velocity=step.velocity;
+              this.scroller.scrollTop += step.distance;
               if (this.scroller.scrollTop !== before) this.momentum = requestAnimationFrame(advance);
             };
             this.momentum = requestAnimationFrame(advance);
@@ -180,9 +188,13 @@ export function createContinuousRenderer(): HTMLElement {
       }
 
       private schedule = () => {
-        if (this.frame || this.closed || this.navigating) return;
-        this.frame = requestAnimationFrame(() => { this.frame = 0; this.updateVisible(); });
+        if (this.closed || this.navigating) return;
+        // Flush the observed final viewport before leaving; do not delay 100%.
+        if(this.atEnd){cancelAnimationFrame(this.frame);this.frame=0;this.updates.request(true);return;}
+        if(this.frame)return;
+        this.frame = requestAnimationFrame(() => { this.frame = 0; this.updates.request(); });
       };
+      flushLocation() { this.flushUpdates(); }
       private updateVisible() {
         if (this.closed || this.navigating) return;
         const top = this.scroller.scrollTop + 16;
@@ -199,13 +211,17 @@ export function createContinuousRenderer(): HTMLElement {
         }
         this.relocate();
       }
+      get atEnd() {
+        const finalEntry = this.entries[this.entries.findLastIndex(item => item.height > 0)];
+        return !!finalEntry?.ready && isScrollEnd(this.scroller.scrollTop, this.scroller.clientHeight, this.scroller.scrollHeight, 3);
+      }
       private relocate(reason = "scroll") {
         if (this.closed || this.navigating) return;
         let entry = this.entries[this.currentIndex], range = this.visibleRange(entry);
         if (!entry?.ready || !range) return;
         const finalEntry = this.entries[this.entries.findLastIndex(item => item.height > 0)];
-        const atEnd = !!finalEntry?.ready && this.scroller.scrollTop + this.scroller.clientHeight >= this.scroller.scrollHeight - 3;
-        if(atEnd&&finalEntry.doc){entry=finalEntry;range=entry.doc!.createRange();range.selectNodeContents(entry.doc!.body);range.collapse(false);}
+        const atEnd = this.atEnd;
+        if(atEnd&&finalEntry.doc){entry=finalEntry;range=this.visibleRange(finalEntry)||range;}
         const offset = Math.max(0, this.scroller.scrollTop - entry.element.offsetTop);
         this.emit("relocate", { reason, index: entry.index, range, fraction: atEnd ? 1 : Math.min(1, offset / entry.height), size: Math.min(1, this.scroller.clientHeight / entry.height) });
       }
@@ -242,7 +258,10 @@ export function createContinuousRenderer(): HTMLElement {
         if (anchor) requestAnimationFrame(() => { if (!this.closed) this.scrollToAnchor(anchor); });
       }
       destroy() {
+        this.flushUpdates();this.updates.cancel();
         this.closed = true; this.resize.disconnect(); cancelAnimationFrame(this.frame); cancelAnimationFrame(this.momentum);
+        window.removeEventListener("pagehide",this.flushUpdates);window.removeEventListener("blur",this.flushUpdates);
+        document.removeEventListener("visibilitychange",this.flushUpdates);
         this.scroller.removeEventListener("scroll", this.schedule);
         for (const entry of this.entries) this.unload(entry);
       }

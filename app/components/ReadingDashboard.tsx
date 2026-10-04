@@ -71,6 +71,6 @@ export const ReadingDashboard = memo(function ReadingDashboard({ books, sessions
         <div className="formatRows">{arcs.map(arc => <div key={arc.type}><span className="formatDot" style={{ background: arc.color }}/><strong>{arc.type}</strong><span>{arc.count} 本</span><b>{Math.round(arc.fraction * 100)}<small>%</small></b></div>)}</div>
       </article>
     </div>
-    <p className="statsFootnote">时长按阅读页停留记录统计，切回书库后更新；读完以阅读进度达到 99% 计。</p>
+    <p className="statsFootnote">时长按阅读页停留记录统计，切回书库后更新；阅读进度达到 100% 时计为读完。</p>
   </div>;
 });

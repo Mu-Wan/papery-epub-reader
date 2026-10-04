@@ -1,0 +1,28 @@
+/* A reading reference is a functional floating layer, not another content card. */
+.epubReferenceLayer{position:fixed;inset:0;z-index:510;color:var(--ink,#202124)}
+.epubReferenceScrim{position:absolute;inset:0;width:100%;height:100%;border:0;border-radius:0;background:rgba(32,33,36,.15);cursor:default}
+.epubReferencePanel{box-sizing:border-box;position:absolute;z-index:511;left:50%;top:calc(var(--visible-top,0px) + var(--safe-top,0px) + (var(--visible-height,100vh) - var(--safe-top,0px) - var(--safe-bottom,0px))/2);transform:translate(-50%,-50%);width:min(480px,calc(100vw - var(--safe-left,0px) - var(--safe-right,0px) - 40px));max-height:min(72vh,calc(var(--visible-height,100vh) - var(--safe-top,0px) - var(--safe-bottom,0px) - 40px));display:flex;flex-direction:column;gap:16px;padding:20px 24px;border:0;border-radius:22px;background:var(--surface,#FBFAF9);box-shadow:0 12px 32px rgba(26,29,35,.10);animation:epubReferenceEnter 200ms ease-out}
+.epubReferencePanel header,.epubReferencePanel header>div,.epubReferencePanel footer{display:flex;align-items:center;gap:8px;flex-shrink:0}
+.epubReferencePanel header{justify-content:space-between}
+.epubReferencePanel h2{font-size:17px;font-weight:600;line-height:1.45;margin:0;overflow-wrap:anywhere}
+.epubReferencePanel button,.epubReferenceReturn{border:0;font:inherit;cursor:pointer;transition:transform 120ms ease-out,opacity 120ms ease-out}
+.epubReferencePanel header button{display:grid;place-items:center;width:44px;height:44px;flex-shrink:0;border-radius:12px;color:var(--secondary,#5B5C60);background:var(--surface-inset,#F5F2EF)}
+.epubReferencePanel button:hover{opacity:.8}.epubReferencePanel button:active,.epubReferenceReturn:active{transform:scale(.98)}
+.epubReferencePanel :is(button,a,[tabindex]):focus-visible,.epubReferenceReturn:focus-visible{outline:2px solid var(--blue-text,#356E9D);outline-offset:3px}
+.epubReferencePanel footer{justify-content:flex-end;gap:10px}
+.epubReferencePanel footer button{min-height:44px;padding:10px 14px;border-radius:12px;display:inline-flex;align-items:center;gap:8px;font-size:14px;color:var(--secondary,#5B5C60);background:var(--surface-inset,#F5F2EF)}
+.epubReferencePanel footer .epubReferenceDone{background:#202124;color:#FBFAF9}
+.epubReferenceContent{min-height:0;overflow:auto;overscroll-behavior:contain;font-size:16px;line-height:1.8;overflow-wrap:anywhere;scrollbar-width:none}
+.epubReferenceContent::-webkit-scrollbar{display:none}
+.epubReferenceContent :is(p,div,section,aside,article,blockquote,ol,ul,dl,pre,table){margin:0 0 12px}.epubReferenceContent :last-child{margin-bottom:0}
+.epubReferenceContent :is(h1,h2,h3,h4,h5,h6){font-size:1em;font-weight:600;margin:12px 0 4px}
+.epubReferenceContent a{color:var(--blue-text,#356E9D);text-decoration:underline;text-underline-offset:3px;cursor:pointer}
+.epubReferenceContent img{display:block;max-width:100%;height:auto;margin:10px 0}.epubReferenceContent table{display:block;max-width:100%;overflow:auto;border-collapse:collapse}.epubReferenceContent :is(td,th){padding:4px 8px;background:var(--surface-inset,#F5F2EF)}.epubReferenceContent pre{white-space:pre-wrap}.epubReferenceContent blockquote{padding-left:12px;color:var(--secondary,#5B5C60)}
+.epubReferenceLoading{min-height:0;overflow:hidden;padding:8px 0;display:grid;gap:10px;align-content:center}.epubReferenceLoading span{height:12px;border-radius:6px;background:var(--surface-inset,#F5F2EF)}.epubReferenceLoading span:nth-child(2){width:88%}.epubReferenceLoading span:nth-child(3){width:62%}
+.epubReferenceError{min-height:0;overflow:auto;margin:0;font-size:15px;line-height:1.7;color:var(--secondary,#5B5C60)}
+.epubReferenceReturn{position:fixed;z-index:505;left:calc(var(--safe-left,0px) + 16px);bottom:calc(var(--safe-bottom,0px) + 50px);display:flex;align-items:center;gap:6px;min-height:44px;padding:10px 14px;border-radius:14px;background:var(--surface,#FBFAF9);color:var(--ink,#202124);box-shadow:0 8px 24px rgba(26,29,35,.1);font-size:14px}
+@keyframes epubReferenceEnter{from{opacity:0;transform:translate(-50%,-50%) scale(.98)}to{opacity:1;transform:translate(-50%,-50%) scale(1)}}
+@media(max-width:600px){.epubReferencePanel{width:min(380px,calc(100vw - var(--safe-left,0px) - var(--safe-right,0px) - 40px));padding:16px 18px;gap:12px}}
+@media(prefers-reduced-motion:reduce){.epubReferencePanel{animation:none}.epubReferencePanel button,.epubReferenceReturn{transition:none}}
+
+@media(max-height:480px){.epubReferencePanel{padding:12px 16px;gap:8px;border-radius:16px}}

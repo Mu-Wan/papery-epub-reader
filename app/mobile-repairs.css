@@ -1,0 +1,221 @@
+/* System bars are measured by Android; web builds use viewport env() insets. */
+.appShell {
+  --safe-top: var(--native-safe-top,env(safe-area-inset-top,0px));
+  --safe-bottom: var(--native-safe-bottom,env(safe-area-inset-bottom,0px));
+  --safe-left: var(--native-safe-left,env(safe-area-inset-left,0px));
+  --safe-right: var(--native-safe-right,env(safe-area-inset-right,0px));
+}
+.userPanel { contain:layout; }
+.userPanel>.panelTabs { flex-shrink:0; }
+.userSyncContent>.backupSyncGuide { content-visibility:auto;contain-intrinsic-size:auto 920px; }
+
+/* A phone stays a phone when rotated. Compact desktop windows keep title bars. */
+.appShell[data-compact-layout=true]:not([data-native-window=true]) {
+  padding-top:0;
+  height:100vh;
+  height:100dvh;
+}
+.appShell[data-compact-layout=true]:not([data-native-window=true]) .titleBar { display:none; }
+.appShell[data-compact-layout=true]:not([data-native-window=true]) .workspace {
+  height:100%;padding:0;
+}
+.appShell[data-compact-layout=true]:not([data-native-window=true]) .mainPanel {
+  padding-left:var(--safe-left);padding-right:var(--safe-right);
+}
+.appShell[data-compact-layout=true]:not([data-native-window=true]) .page { padding-top:calc(20px + var(--safe-top));padding-bottom:calc(28px + var(--safe-bottom)); }
+.appShell[data-compact-layout=true]:not([data-native-window=true]) :is(.mobileClose,.menuButton) {
+  display:grid;place-items:center;flex:0 0 36px;width:36px;height:36px;
+  padding:0;border:0;border-radius:50%;background:var(--frost-control);color:var(--secondary);
+}
+.appShell[data-compact-layout=true]:not([data-native-window=true]) .scrim {
+  position:fixed;inset:0;z-index:60;border:0;background:rgba(26,29,35,.18);
+}
+/* Keep the closed selector weaker than .sidebar.open, including in reader mode. */
+.appShell[data-compact-layout=true]:not([data-native-window=true]) .sidebar {
+  position:fixed;inset:0 auto 0 0;height:100%;
+  width:min(280px,calc(100vw - 48px));flex-basis:auto;z-index:65;
+  padding:calc(16px + var(--safe-top)) 16px calc(12px + var(--safe-bottom)) calc(16px + var(--safe-left));
+  background:var(--frost-overlay);box-shadow:var(--shadow-overlay);
+  display:flex;opacity:1;transform:translateX(-110%);pointer-events:none;
+}
+.appShell[data-compact-layout=true]:not([data-native-window=true]) .sidebar.open {
+  transform:none;pointer-events:auto;
+}
+.appShell[data-compact-layout=true]:not([data-native-window=true]) .readerTop {
+  height:calc(44px + var(--safe-top));padding:var(--safe-top) 48px 0 8px;
+}
+.appShell[data-compact-layout=true]:not([data-native-window=true]) .readingUiToggle { top:calc(6px + var(--safe-top));right:8px; }
+.appShell[data-compact-layout=true]:not([data-native-window=true]) :is(.readerBottom,.readerBottom.quiet) {
+  height:calc(30px + var(--safe-bottom));padding:0 12px var(--safe-bottom);gap:10px;font-size:10px;
+}
+.appShell[data-compact-layout=true]:not([data-native-window=true]) .readingStage {
+  padding:calc(44px + var(--safe-top)) 0 calc(30px + var(--safe-bottom));
+}
+.appShell[data-compact-layout=true]:not([data-native-window=true]) :is(.readerTopLeft>button,.readerTools button) {
+  width:32px;min-width:32px;padding:0;
+}
+.appShell[data-compact-layout=true]:not([data-native-window=true]) :is(.readerTopLeft>button>span,.readerTools button>span) { display:none; }
+.appShell[data-compact-layout=true]:not([data-native-window=true]) .readerTopLeft>div { max-width:clamp(60px,20vw,180px); }
+.appShell[data-mobile=true] .readerTopLeft>button:first-child { display:flex; }
+.appShell[data-mobile=true] .readerTopLeft>button:nth-child(2) { display:none; }
+.appShell[data-compact-layout=true]:not([data-native-window=true]) :is(.settingsPanel,.tocPanel,.bookSearchPanel,.annotationComposer,.importModal,.smallModal,.confirmModal,.profilePanel) {
+  --dialog-width:min(380px,calc(100vw - var(--safe-left) - var(--safe-right) - 40px));
+  --dialog-height:calc(var(--visible-height,100vh) - var(--safe-top) - var(--safe-bottom) - 40px);
+  top:calc(var(--visible-top,0px) + var(--safe-top) + (var(--visible-height,100vh) - var(--safe-top) - var(--safe-bottom))/2);bottom:auto;
+  left:calc(var(--safe-left) + (100vw - var(--safe-left) - var(--safe-right) - var(--dialog-width))/2);right:auto;
+  width:var(--dialog-width);height:auto;min-height:0;
+  max-height:calc(100vh - var(--safe-top) - var(--safe-bottom) - 40px);
+  max-height:var(--dialog-height);max-height:min(80vh,var(--dialog-height));margin:0;transform:translateY(-50%);
+  padding:16px;border-radius:20px;overflow-y:auto;overscroll-behavior:contain;
+  animation:mobilePanelEnter 220ms ease-out both;
+}
+.appShell[data-compact-layout=true]:not([data-native-window=true]) :is(.settingsPanel,.tocPanel,.bookSearchPanel) {
+  bottom:auto;gap:14px;
+}
+.appShell[data-compact-layout=true]:not([data-native-window=true]) :is(.settingsPanel,.tocPanel,.bookSearchPanel) > * { flex-shrink:0; }
+.appShell[data-compact-layout=true]:not([data-native-window=true]) :is(.tocList,.bookSearchResults) { min-height:0;flex:1 1 auto; }
+.appShell[data-compact-layout=true]:not([data-native-window=true]) .panelHeader { flex-shrink:0; }
+.appShell[data-compact-layout=true]:not([data-native-window=true]) .panelHeader h2 { font-size:17px; }
+
+/* Phone controls have persistent touch targets, independent of hover support. */
+.appShell[data-mobile=true] .sidebarShelf .categoryRow { gap:4px; }
+.appShell[data-mobile=true] .sidebarShelf .categoryButton { flex:1;min-width:0;width:auto;height:44px;gap:6px; }
+.appShell[data-mobile=true] .sidebarShelf .categoryButton>span { flex:1;min-width:0;max-width:none; }
+.appShell[data-mobile=true] .sidebarShelf .categoryButton em { flex:none;transform:none; }
+.appShell[data-mobile=true] .sidebarShelf .categoryActions { position:static;flex:none;opacity:1;pointer-events:auto;transform:none;gap:0; }
+.appShell[data-mobile=true] .sidebarShelf .categoryActions button { width:40px;height:44px;pointer-events:auto;opacity:1;transform:none; }
+.appShell[data-mobile=true] .sidebarShelf .categoryActions svg { width:16px;height:16px; }
+.appShell[data-mobile=true] .sidebarShelf .categoryActions button:active { background:var(--surface-inset);transform:scale(.98); }
+.appShell[data-mobile=true] .sidebarShelf .categoryActions button:focus-visible { outline:2px solid var(--blue-text);outline-offset:-3px; }
+.appShell[data-mobile=true] .moreBook { opacity:1;width:36px;height:36px; }
+.appShell[data-mobile=true] .bookSearchInput kbd { display:none; }
+
+.appShell[data-compact-layout=true]:not([data-native-window=true]) :is(.smallModal,.confirmModal) { --dialog-width:min(340px,calc(100vw - var(--safe-left) - var(--safe-right) - 40px)); }
+.appShell[data-compact-layout=true]:not([data-native-window=true]) :is(.tocPanel,.bookSearchPanel) { --dialog-width:min(400px,calc(100vw - var(--safe-left) - var(--safe-right) - 40px)); }
+.appShell[data-compact-layout=true]:not([data-native-window=true]) .profilePanel { gap:14px; }
+.appShell[data-compact-layout=true]:not([data-native-window=true]) .userPanel .panelTabs { margin:0 0 8px; }
+.appShell[data-compact-layout=true]:not([data-native-window=true]) .settingsPanel section>label { margin-bottom:8px; }
+.appShell[data-compact-layout=true]:not([data-native-window=true]) :is(.fontChoices,.choiceGrid,.choiceRows,.colorChoices) { gap:6px;margin-top:8px; }
+.appShell[data-compact-layout=true]:not([data-native-window=true]) :is(.fontChoices,.choiceGrid) button { min-height:44px;padding:8px 6px; }
+.appShell[data-compact-layout=true]:not([data-native-window=true]) .choiceRows button { min-height:56px;padding:8px 12px;border-radius:14px; }
+.appShell[data-compact-layout=true]:not([data-native-window=true]) .choiceRows button>span { gap:2px; }
+.appShell[data-compact-layout=true]:not([data-native-window=true]) .smallModal>input { margin:16px 0 14px; }
+.appShell[data-compact-layout=true]:not([data-native-window=true]) .confirmIcon { width:36px;height:36px;margin-bottom:12px; }
+.appShell[data-compact-layout=true]:not([data-native-window=true]) .confirmModal h2 { font-size:18px; }
+.appShell[data-compact-layout=true]:not([data-native-window=true]) .profileAvatarPicker { width:68px;height:68px; }
+.appShell[data-compact-layout=true]:not([data-native-window=true]) .dropZone { height:150px; }
+.appShell[data-compact-layout=true]:not([data-native-window=true]) .annotationComposer blockquote { max-height:112px;margin:12px 0;overflow:auto; }
+.appShell[data-compact-layout=true]:not([data-native-window=true]) .annotationComposer textarea { min-height:88px;height:88px; }
+.appShell[data-compact-layout=true]:not([data-native-window=true]) .colorChoices.small { margin:12px 0; }
+.appShell[data-compact-layout=true]:not([data-native-window=true]) .userSyncContent>label { margin:12px 0;gap:6px; }
+.appShell[data-compact-layout=true]:not([data-native-window=true]) .userSyncContent .backupSyncGuide { margin-top:16px; }
+
+/* Touch desktops/tablets also cannot depend on hover to reveal actions. */
+@media(hover:none),(pointer:coarse) {
+  .appShell .sidebarShelf .categoryRow { gap:4px; }
+  .appShell .sidebarShelf .categoryButton { flex:1;min-width:0;width:auto;height:44px;gap:6px; }
+  .appShell .sidebarShelf .categoryButton>span { flex:1;min-width:0;max-width:none; }
+  .appShell .sidebarShelf .categoryButton em { flex:none;transform:none; }
+  .appShell .sidebarShelf .categoryActions { position:static;flex:none;opacity:1;pointer-events:auto;transform:none;gap:0; }
+  .appShell .sidebarShelf .categoryActions button { width:40px;height:44px;pointer-events:auto;opacity:1;transform:none; }
+  .appShell .sidebarShelf .categoryActions svg { width:16px;height:16px; }
+  .appShell .sidebarShelf .categoryActions button:active { background:var(--surface-inset); }
+  .appShell .moreBook { opacity:1; }
+}
+
+@keyframes mobilePanelEnter { from { opacity:0;transform:translateY(-50%) scale(.98); } to { opacity:1;transform:translateY(-50%) scale(1); } }
+@media(max-height:480px) {
+  .appShell[data-compact-layout=true]:not([data-native-window=true]) :is(.settingsPanel,.tocPanel,.bookSearchPanel,.annotationComposer,.importModal,.smallModal,.confirmModal,.profilePanel) { padding:12px 16px;border-radius:16px; }
+}
+@media(prefers-reduced-motion:reduce) {
+  .appShell[data-compact-layout=true]:not([data-native-window=true]) [role=dialog] { animation:none; }
+}
+
+/* Mobile density is based on fingers and reading distance, not desktop pixels. */
+.appShell[data-mobile=true][data-compact-layout=true]:not([data-native-window=true]) .page { padding-left:16px;padding-right:16px; }
+.appShell[data-mobile=true][data-compact-layout=true]:not([data-native-window=true]) :is(.mobileClose,.menuButton) { width:44px;height:44px;flex-basis:44px; }
+.appShell[data-mobile=true][data-compact-layout=true]:not([data-native-window=true]) :is(.uiButton,.resumeAction) { min-height:48px;font-size:15px; }
+.appShell[data-mobile=true][data-compact-layout=true]:not([data-native-window=true]) :is(.searchBox input,.bookSearchInput input,.profileNameField input,.smallModal>input,.userSyncContent input:not([type=checkbox]),.annotationComposer textarea) { font-size:16px; }
+.appShell[data-mobile=true][data-compact-layout=true]:not([data-native-window=true]) :is(.searchBox,.bookSearchInput) { min-height:48px; }
+.appShell[data-mobile=true][data-compact-layout=true]:not([data-native-window=true]) .headerActions { flex-wrap:wrap;gap:10px; }
+.appShell[data-mobile=true][data-compact-layout=true]:not([data-native-window=true]) .headerActions .searchBox { flex:1 1 180px;min-width:0; }
+.appShell[data-mobile=true][data-compact-layout=true]:not([data-native-window=true]) .headerActions .addBookCard { min-height:48px;padding:10px 14px;font-size:15px; }
+.appShell[data-mobile=true][data-compact-layout=true]:not([data-native-window=true]) .headerTitle h1 { font-size:26px; }
+.appShell[data-mobile=true][data-compact-layout=true]:not([data-native-window=true]) .pageCount { font-size:13px; }
+.appShell[data-mobile=true][data-compact-layout=true]:not([data-native-window=true]) :is(.bookInfo h3,.peekRows strong) { font-size:15px;line-height:1.5; }
+.appShell[data-mobile=true][data-compact-layout=true]:not([data-native-window=true]) :is(.bookInfo p,.peekRows small,.resumeIdentity p) { font-size:13px; }
+.appShell[data-mobile=true][data-compact-layout=true]:not([data-native-window=true]) .resumePosition>span { font-size:12px; }
+.appShell[data-mobile=true][data-compact-layout=true]:not([data-native-window=true]) .bookProgress em { font-size:12px; }
+.appShell[data-mobile=true][data-compact-layout=true]:not([data-native-window=true]) .moreBook { width:44px;height:44px; }
+.appShell[data-mobile=true][data-compact-layout=true]:not([data-native-window=true]) :is(.bookMenu button,.segmented button,.panelTabs button,.annotationStyles button,.fontChoices button,.choiceGrid button,.noteMonthSelect,.noteBookSelect) { min-height:44px;font-size:14px; }
+.appShell[data-mobile=true][data-compact-layout=true]:not([data-native-window=true]) .bookMenu { max-width:calc(100vw - 40px);max-height:60vh;overflow:auto; }
+.appShell[data-mobile=true][data-compact-layout=true]:not([data-native-window=true]) :is(.navList>button,.sidebarBottom>button,.addCategory) { min-height:48px;font-size:15px; }
+.appShell[data-mobile=true][data-compact-layout=true]:not([data-native-window=true]) .sidebarShelf .categoryButton { height:48px;font-size:15px; }
+.appShell[data-mobile=true][data-compact-layout=true]:not([data-native-window=true]) .sidebarShelf .categoryActions button { width:44px;height:48px; }
+.appShell[data-mobile=true][data-compact-layout=true]:not([data-native-window=true]) .sidebarShelf .categoryActions svg { width:18px;height:18px; }
+.appShell[data-mobile=true][data-compact-layout=true]:not([data-native-window=true]) .sidebarShelf>p { font-size:13px; }
+.appShell[data-mobile=true][data-compact-layout=true]:not([data-native-window=true]) .profileSummary strong { font-size:15px; }
+.appShell[data-mobile=true][data-compact-layout=true]:not([data-native-window=true]) .profileSummary small { font-size:12px; }
+.appShell[data-mobile=true][data-compact-layout=true]:not([data-native-window=true]) .noteQuote { font-size:16px;line-height:1.7; }
+.appShell[data-mobile=true][data-compact-layout=true]:not([data-native-window=true]) .noteBody { font-size:14px;line-height:1.7; }
+.appShell[data-mobile=true][data-compact-layout=true]:not([data-native-window=true]) .noteCard footer { margin-left:0;gap:6px; }
+.appShell[data-mobile=true][data-compact-layout=true]:not([data-native-window=true]) .noteCard footer :is(span,time) { font-size:12px; }
+.appShell[data-mobile=true][data-compact-layout=true]:not([data-native-window=true]) .noteCard footer button { width:44px;height:44px; }
+.appShell[data-mobile=true][data-compact-layout=true]:not([data-native-window=true]) .noteToolbar { gap:10px; }
+.appShell[data-mobile=true][data-compact-layout=true]:not([data-native-window=true]) .libraryPage .sectionHeading { align-items:flex-start; }
+.appShell[data-mobile=true][data-compact-layout=true]:not([data-native-window=true]) .libraryPage .sectionHeading .segmented { max-width:100%;overflow-x:auto;flex-wrap:nowrap;scrollbar-width:none; }
+.appShell[data-mobile=true][data-compact-layout=true]:not([data-native-window=true]) .libraryPage .sectionHeading .segmented button { flex-shrink:0; }
+.appShell[data-mobile=true][data-compact-layout=true]:not([data-native-window=true]) :is(.noteMonthSelect,.noteBookSelect) { font-size:14px;max-width:100%; }
+.appShell[data-mobile=true][data-compact-layout=true]:not([data-native-window=true]) .panelHeader h2 { font-size:19px; }
+.appShell[data-mobile=true][data-compact-layout=true]:not([data-native-window=true]) .panelHeader>button { width:44px;height:44px;flex-shrink:0; }
+.appShell[data-mobile=true][data-compact-layout=true]:not([data-native-window=true]) :is(.settingsPanel,.profilePanel,.annotationComposer,.smallModal,.confirmModal,.importModal,.tocPanel,.bookSearchPanel) { font-size:14px; }
+.appShell[data-mobile=true][data-compact-layout=true]:not([data-native-window=true]) :is(.settingsPanel section>label,.profileNameField,.userSyncContent>label,.settingLabel,.settingSlider label,.settingRow label) { font-size:14px; }
+.appShell[data-mobile=true][data-compact-layout=true]:not([data-native-window=true]) :is(.settingsPanel p,.profilePanel>p,.privacyTip,.syncStatus,.formError,.backupSyncGuide p) { font-size:13px;line-height:1.7; }
+.appShell[data-mobile=true][data-compact-layout=true]:not([data-native-window=true]) :is(.tocList button,.bookSearchResults button,.marksList button,.fontChoices button,.choiceGrid button) { min-height:48px;font-size:14px; }
+.appShell[data-mobile=true][data-compact-layout=true]:not([data-native-window=true]) :is(.bookSearchResults strong,.readerNoteJump strong,.bookTimeRows strong) { font-size:15px; }
+.appShell[data-mobile=true][data-compact-layout=true]:not([data-native-window=true]) :is(.bookSearchResults span,.readerNoteJump small,.readerNoteJump span,.readerNoteRow footer,.bookTimeRows small,.rhythmFooter,.formatRows) { font-size:12px; }
+.appShell[data-mobile=true][data-compact-layout=true]:not([data-native-window=true]) :is(.readerNoteRow footer button,.composerActions button,.removeAvatar) { min-height:44px;font-size:14px; }
+.appShell[data-mobile=true][data-compact-layout=true]:not([data-native-window=true]) .readerNoteRow footer button { min-width:44px; }
+.appShell[data-mobile=true][data-compact-layout=true]:not([data-native-window=true]) .readerStatus { font-size:12px; }
+.appShell[data-mobile=true][data-compact-layout=true]:not([data-native-window=true]) .colorChoices button { width:44px;height:44px;min-width:44px; }
+.appShell[data-mobile=true][data-compact-layout=true]:not([data-native-window=true]) :is(.settingsPanel select,.smallModal input,.profileNameField input,.userSyncContent input) { min-height:44px; }
+.appShell[data-mobile=true][data-compact-layout=true]:not([data-native-window=true]) .backupSyncGuide summary { min-height:44px;display:flex;align-items:center;font-size:14px; }
+.appShell[data-mobile=true][data-compact-layout=true]:not([data-native-window=true]) .pdfReaderShell .pdfToolDock { width:112px; }
+.appShell[data-mobile=true][data-compact-layout=true]:not([data-native-window=true]) .pdfReaderShell .pdfToolDock[data-collapsed=true] { width:44px;padding:0; }
+.appShell[data-mobile=true][data-compact-layout=true]:not([data-native-window=true]) .pdfReaderShell .pdfToolDock .pdfZoomControls { width:100%; }
+.appShell[data-mobile=true][data-compact-layout=true]:not([data-native-window=true]) .pdfReaderShell .pdfToolDock .pdfZoomControls button { min-height:44px;font-size:14px; }
+.appShell[data-mobile=true][data-compact-layout=true]:not([data-native-window=true]) .pdfReaderShell .pdfDockToggle { min-height:44px;min-width:44px;font-size:12px; }
+.appShell[data-mobile=true][data-compact-layout=true]:not([data-native-window=true]) .colorChoices { flex-wrap:wrap;gap:6px; }
+.appShell[data-mobile=true][data-compact-layout=true]:not([data-native-window=true]) .toggleSwitch { position:relative;width:48px;height:44px;flex-basis:48px;padding:0 9px;border-radius:12px;background:transparent; }
+.appShell[data-mobile=true][data-compact-layout=true]:not([data-native-window=true]) .toggleSwitch::before { content:"";position:absolute;left:6px;top:11px;width:36px;height:22px;border-radius:999px;background:var(--outline); }
+.appShell[data-mobile=true][data-compact-layout=true]:not([data-native-window=true]) .toggleSwitch[aria-checked=true]::before { background:var(--blue-deep); }
+.appShell[data-mobile=true][data-compact-layout=true]:not([data-native-window=true]) .toggleSwitch>span { position:relative; }
+
+/* Separate the title and tools on narrow phones; every tool keeps a real target. */
+.appShell[data-mobile=true][data-compact-layout=true]:not([data-native-window=true]) :is(.readerTopLeft>button,.readerTools button,.readingUiToggle) { width:44px;min-width:44px;height:44px;padding:0; }
+.appShell[data-mobile=true][data-compact-layout=true]:not([data-native-window=true]) .readerTop { height:calc(52px + var(--safe-top));padding:var(--safe-top) 56px 0 8px;gap:4px; }
+.appShell[data-mobile=true][data-compact-layout=true]:not([data-native-window=true]) .readingUiToggle { top:calc(4px + var(--safe-top));right:8px; }
+.appShell[data-mobile=true][data-compact-layout=true]:not([data-native-window=true]) .readerTools { gap:0; }
+.appShell[data-mobile=true][data-compact-layout=true]:not([data-native-window=true]) .readerTools svg { width:21px;height:21px; }
+.appShell[data-mobile=true][data-compact-layout=true]:not([data-native-window=true]) .readerTopLeft strong { font-size:15px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap; }
+.appShell[data-mobile=true][data-compact-layout=true]:not([data-native-window=true]) .readerTopLeft small { display:none; }
+.appShell[data-mobile=true][data-compact-layout=true]:not([data-native-window=true]) :is(.readerBottom,.readerBottom.quiet) { height:calc(36px + var(--safe-bottom));font-size:12px;padding:0 12px var(--safe-bottom);gap:8px; }
+.appShell[data-mobile=true][data-compact-layout=true]:not([data-native-window=true]) .readingStage { padding:calc(52px + var(--safe-top)) 0 calc(36px + var(--safe-bottom)); }
+@media(max-width:480px) {
+  .appShell[data-mobile=true][data-compact-layout=true]:not([data-native-window=true]) .readerTop { height:calc(96px + var(--safe-top));padding:calc(4px + var(--safe-top)) 8px 4px;display:grid;grid-template-columns:minmax(0,1fr) 48px;grid-template-rows:44px 44px;gap:0; }
+  .appShell[data-mobile=true][data-compact-layout=true]:not([data-native-window=true]) .readerTopLeft { min-width:0;gap:8px; }
+  .appShell[data-mobile=true][data-compact-layout=true]:not([data-native-window=true]) .readerTopLeft>div { min-width:0;max-width:none;overflow:hidden; }
+  .appShell[data-mobile=true][data-compact-layout=true]:not([data-native-window=true]) .readerTools { grid-row:2;grid-column:1/-1;justify-content:space-around; }
+  .appShell[data-mobile=true][data-compact-layout=true]:not([data-native-window=true]) .readingStage { padding-top:calc(96px + var(--safe-top)); }
+}
+
+/* Small controls do not need separate blurred surfaces. Keep frost on real layers. */
+.appShell[data-mobile=true][data-compact-layout=true]:not([data-native-window=true]) :is(.searchBox,.glassLabel,.segmented,.panelTabs,.roundIcon,.typePill,.moreBook,.readingUiToggle) { backdrop-filter:none;-webkit-backdrop-filter:none; }
+.appShell[data-mobile=true][data-compact-layout=true]:not([data-native-window=true]) :is(.sidebar,.settingsPanel,.tocPanel,.bookSearchPanel,.annotationComposer,.importModal,.smallModal,.confirmModal,.profilePanel) { backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px); }
+.appShell[data-mobile=true][data-compact-layout=true][data-low-memory=true]:not([data-native-window=true]) :is(.sidebar,.settingsPanel,.tocPanel,.bookSearchPanel,.annotationComposer,.importModal,.smallModal,.confirmModal,.profilePanel) { backdrop-filter:none;-webkit-backdrop-filter:none;background:var(--surface); }
+.appShell[data-mobile=true][data-compact-layout=true]:not([data-native-window=true]) .bookCard:not([data-book-menu-root]) { content-visibility:auto;contain-intrinsic-size:auto 288px; }
+.appShell[data-mobile=true][data-compact-layout=true]:not([data-native-window=true]) .noteCard { content-visibility:auto;contain-intrinsic-size:auto 160px; }
+.appShell[data-mobile=true][data-compact-layout=true]:not([data-native-window=true]) :is(.bookCard,.noteCard) { animation:none; }
+.appShell[data-mobile=true][data-compact-layout=true]:not([data-native-window=true]) :is(.bookCard,.noteCard):hover { transform:none; }
+.appShell[data-mobile=true][data-compact-layout=true]:not([data-native-window=true]) button { touch-action:manipulation; }
+.appShell[data-mobile=true][data-compact-layout=true]:not([data-native-window=true]) button:active:not(:disabled) { opacity:.8; }

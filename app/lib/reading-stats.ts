@@ -29,7 +29,7 @@ export function readingStats(books: StatsBook[], sessions: StatsSession[], range
   return {
     days, seconds, totalSeconds, sessionCount, bookSeconds,
     activeDays: days.filter(day => day.seconds > 0).length,
-    completed: books.filter(book => book.progress >= 99).length,
+    completed: books.filter(book => book.progress >= 100).length,
     formats: (["EPUB", "PDF", "TXT"] as const).map(type => ({ type, count: books.filter(book => book.type === type).length })),
   };
 }

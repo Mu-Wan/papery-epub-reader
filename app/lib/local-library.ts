@@ -22,7 +22,7 @@ const SETTINGS = "settings";
 const CATEGORIES = "categories";
 const SESSIONS = "sessions";
 
-export type LocalReadingSession = { id:string;book_id:string;started_at:number;duration_seconds:number;words_read:number };
+export type LocalReadingSession = { id:string;book_id:string;started_at:number;duration_seconds:number;words_read:number;updatedAt?:number };
 
 let _dbPromise: Promise<IDBDatabase> | null = null;
 function getLibrary(): Promise<IDBDatabase> {
@@ -166,13 +166,35 @@ async function changeCategory(name: string, next: string | null) {
   });
 }
 export const loadCategories = async () => (await getAll<{ name: string }>(CATEGORIES)).map(item => item.name);
-export const saveLocalSession = (session: LocalReadingSession) => put(SESSIONS, session);
-export const loadLocalSessions = () => getAll<LocalReadingSession>(SESSIONS);
+const SESSION_JOURNAL="papery-pending-sessions";
+function pendingSessions():LocalReadingSession[]{
+  try{const value=JSON.parse(localStorage.getItem(SESSION_JOURNAL)||"[]");return Array.isArray(value)?value.filter(item=>item&&typeof item.id==="string"&&typeof item.book_id==="string"&&Number.isFinite(item.started_at)&&item.started_at>=0&&Number.isFinite(item.duration_seconds)&&item.duration_seconds>0&&Number.isFinite(item.words_read)):[]}catch{return[]}
+}
+function writePendingSessions(sessions:LocalReadingSession[]){try{if(sessions.length)localStorage.setItem(SESSION_JOURNAL,JSON.stringify(sessions));else localStorage.removeItem(SESSION_JOURNAL)}catch{}}
+export async function saveLocalSession(session:LocalReadingSession){
+  // WebView destruction can abort IDB. Journal synchronously before awaiting it.
+  const pending=pendingSessions(),previous=pending.find(item=>item.id===session.id);
+  const latest=previous&&previous.duration_seconds>session.duration_seconds?previous:session;
+  writePendingSessions([...pending.filter(item=>item.id!==session.id),latest]);
+  await put(SESSIONS,latest);
+  writePendingSessions(pendingSessions().filter(item=>item.id!==latest.id||item.duration_seconds>latest.duration_seconds));
+}
+export async function loadLocalSessions(){
+  const records=await getAll<LocalReadingSession>(SESSIONS),merged=new Map(records.map(item=>[item.id,item]));
+  for(const session of pendingSessions()){
+    const previous=merged.get(session.id);
+    if(!previous||previous.duration_seconds<session.duration_seconds){merged.set(session.id,session);void saveLocalSession(session).catch(()=>{})}
+    else writePendingSessions(pendingSessions().filter(item=>item.id!==session.id));
+  }
+  return [...merged.values()];
+}
 
 function blobToDataUrl(blob:Blob){return new Promise<string>((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(String(reader.result));reader.onerror=()=>reject(reader.error);reader.readAsDataURL(blob)})}
 function dataUrlToBlob(value:string){const [header,data]=value.split(",",2);const mime=/data:([^;]+)/.exec(header)?.[1]||"application/octet-stream";const binary=atob(data);const bytes=new Uint8Array(binary.length);for(let index=0;index<binary.length;index++)bytes[index]=binary.charCodeAt(index);return new Blob([bytes],{type:mime})}
 
 export async function exportLibraryBackup(){
+  // Recover pending sessions before constructing a portable snapshot.
+  await Promise.all(pendingSessions().map(session=>saveLocalSession(session)));
   const db=await getLibrary();
   const [books,annotations,settings,categories,sessions]=await new Promise<[LocalBookRecord[],ReaderAnnotation[],{key:string;value:unknown}[],{name:string}[],LocalReadingSession[]]>((resolve,reject)=>{
     const tx=db.transaction([BOOKS,ANNOTATIONS,SETTINGS,CATEGORIES,SESSIONS],"readonly"), values:unknown[]=[];
@@ -192,6 +214,7 @@ export async function importLibraryBackup(file:File){
   }
   for(const note of data.annotations)if(["quote","note","locator","color","chapterTitle"].some(key=>typeof note[key]!=="string")||!["highlight","underline","bookmark"].includes(String(note.style))||typeof note.progress!=="number"||!Number.isFinite(note.progress))throw new Error("备份笔记信息无效");
   for(const item of data.settings)if(portableSetting(String(item.key))){
+    if(item.key==="category-order")continue;
     if(item.key==="last-read-book-id"){if(typeof item.value!=="string")throw new Error("备份最近阅读记录无效");continue;}
     if(!item.value||typeof item.value!=="object"||Array.isArray(item.value))throw new Error("备份偏好设置无效");
     const value=item.value as Record<string,unknown>;

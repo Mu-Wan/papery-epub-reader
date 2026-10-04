@@ -43,6 +43,8 @@ export type ReaderLocation = {
   progress: number;
   page: number;
   totalPages: number;
+  paginationPending?: boolean;
+  pagePending?: boolean;
   chapterTitle: string;
   chapterIndex: number;
   chapterCount: number;

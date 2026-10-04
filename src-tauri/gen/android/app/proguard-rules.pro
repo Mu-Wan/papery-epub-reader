@@ -1,4 +1,7 @@
 # Add project specific ProGuard rules here.
+-keepclassmembers class com.papery.reader.MainActivity$ReaderBridge {
+    @android.webkit.JavascriptInterface <methods>;
+}
 # You can control the set of applied configuration files using the
 # proguardFiles setting in build.gradle.
 #

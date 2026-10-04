@@ -11,7 +11,7 @@ import { ToggleSwitch } from "./ToggleSwitch";
 export function SyncPanel({onClose,onUpdated,embedded=false,onBusyChange}:{onClose:()=>void;onUpdated:()=>void;embedded?:boolean;onBusyChange?:(busy:boolean)=>void}) {
  const dialog=useDialogFocus<HTMLElement>(()=>{if(!busy)onClose()},!embedded);
  const [config,setConfig]=useState<DriveConfig>({clientId:"",autoSync:false});
- const [connected,setConnected]=useState(driveConnected()),[busy,setBusy]=useState(false),[waiting,setWaiting]=useState(false),[status,setStatus]=useState("尚未连接 Google Drive"),[code,setCode]=useState("");
+ const [connected,setConnected]=useState(()=>driveConnected()),[busy,setBusy]=useState(false),[waiting,setWaiting]=useState(false),[status,setStatus]=useState("尚未连接 Google Drive"),[code,setCode]=useState("");
  const [failed,setFailed]=useState(false);
  useEffect(()=>{onBusyChange?.(busy)},[busy,onBusyChange]);
  const accept=async(input:string)=>{setFailed(false);try{const result=await finishDriveLogin(input);connectDriveToken(result.access_token,result.expires_in);setCode("");setConnected(true);setWaiting(false);setStatus("已连接 Google Drive，可以立即同步")}catch(error){setFailed(true);setStatus(error instanceof Error?error.message:"连接码无效，请重新连接")}};

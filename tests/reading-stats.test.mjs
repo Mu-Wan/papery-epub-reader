@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readingStats, durationLabel } from '../app/lib/reading-stats.ts';
 
 const now = new Date(2026, 8, 30, 18);
-const books = [{ id: 'a', type: 'TXT', progress: 10 }, { id: 'b', type: 'EPUB', progress: 99 }, { id: 'c', type: 'EPUB', progress: 0 }];
+const books = [{ id: 'a', type: 'TXT', progress: 10 }, { id: 'b', type: 'EPUB', progress: 100 }, { id: 'c', type: 'EPUB', progress: 0 }];
 const session = (book_id, started_at, duration_seconds) => ({ book_id, started_at, duration_seconds });
 
 test('Statistics use recorded durations, real format counts and completed progress', () => {
@@ -28,4 +28,9 @@ test('Empty libraries and invalid sessions do not invent activity or proportions
   assert.equal(stats.seconds, 0); assert.equal(stats.activeDays, 0); assert.equal(stats.completed, 0);
   assert.deepEqual(stats.formats.map(x => x.count), [0, 0, 0]);
   assert.equal(durationLabel(0), '0 分钟'); assert.equal(durationLabel(25), '不足 1 分钟'); assert.equal(durationLabel(3700), '1 小时 1 分钟');
+});
+
+test('Near-final reading never counts as completed by rounding', () => {
+  const stats = readingStats([{id:'a',type:'TXT',progress:99.9},{id:'b',type:'PDF',progress:100}], [], 7, now);
+  assert.equal(stats.completed, 1);
 });
