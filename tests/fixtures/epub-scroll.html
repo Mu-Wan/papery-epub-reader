@@ -1,0 +1,17 @@
+<!doctype html><meta charset="utf-8"><style>body{margin:0}papery-continuous{position:absolute;left:0;top:0;width:340px!important;height:650px!important}pre{margin-left:350px;white-space:pre-wrap;font-size:10px}</style><pre id="results">pending</pre>
+<script type="module">
+import {createContinuousRenderer} from './epub-continuous.js';
+const result={errors:[],cases:[]};let mode='';window.addEventListener('error',e=>result.errors.push({mode,message:e.message}));
+const delay=ms=>new Promise(r=>setTimeout(r,ms));
+for(const [name,extra,doctype]of [['normal','',true],['quirks','',false],['vh','article{padding-top:20vh}',true],['media','@media(min-height:1800px){p{margin-bottom:0!important}}',true],['float','article{float:left}',true]]){
+ mode=name;const renderer=createContinuousRenderer();document.body.append(renderer);
+ const measurements=[],samples=[];const raw=renderer.measure.bind(renderer);
+ renderer.measure=e=>{const before=e.height;raw(e);if(before!==e.height)measurements.push({before,after:e.height,body:e.doc.body.getBoundingClientRect().height,scroll:e.doc.body.scrollHeight,inner:e.doc.defaultView.innerHeight});};
+ renderer.open({sections:[{load:async()=>URL.createObjectURL(new Blob([`${doctype?'<!doctype html>':''}<html><head><style>body{font:19px/1.9 serif}p{margin:0 0 14px}${extra}</style></head><body><article>${'<p>原创独立布局测试文本</p>'.repeat(40)}</article></body></html>`],{type:'text/html'}))}]});
+ await renderer.goTo({index:0,anchor:0});await delay(120);
+ renderer.scroller.scrollTop=400;
+ for(let n=0;n<10;n++){await new Promise(requestAnimationFrame);await delay(70);samples.push({top:renderer.scroller.scrollTop,height:renderer.entries[0].height});}
+ const doc=renderer.entries[0].doc,range=doc.createRange();range.selectNodeContents(doc.body);result.cases.push({name,measurements,samples,compat:doc.compatMode,body:doc.body.outerHTML.slice(0,600),child:doc.body.firstElementChild.getBoundingClientRect().toJSON(),range:range.getBoundingClientRect().toJSON()});renderer.destroy();renderer.remove();
+}
+document.getElementById('results').textContent=JSON.stringify(result);
+</script>

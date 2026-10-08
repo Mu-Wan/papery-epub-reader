@@ -57,3 +57,9 @@
 @media(prefers-reduced-motion:reduce) {
   .appShell .collectionGroupHeading svg,.appShell .readerPage .readingUiToggle { transition:none; }
 }
+
+/* Controls overlay the page without changing its layout when they are toggled. */
+.appShell .readerPage[data-reading-ui] .readingStage { padding-top:12px!important; }
+.appShell[data-compact-layout=true]:not([data-native-window=true]) .readerPage[data-reading-ui] .readingStage { padding-top:calc(12px + var(--safe-top))!important; }
+.appShell .readerPage[data-reading-ui=hidden] .readingUiToggle { display:none!important; }
+.appShell .readerPage[data-reading-ui=hidden] .readerTop { visibility:hidden; }

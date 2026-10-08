@@ -1,4 +1,6 @@
 "use client";
+
+import { continuousTouchPoint } from "../lib/epub-scroll-layout";
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
@@ -553,7 +555,7 @@ function FoliateEpubReader({source,sourceBlob,bookId,settings,initialLocation,an
       // view.js), (2) keep foliate-view 'load' listener, (3) 120ms poller backup.
       const wheelDocs=new WeakSet<Document>();
       let wheelLocked=false;
-      const handleWheelDoc=(doc:Document|null|undefined)=>{if(!doc||wheelDocs.has(doc))return;wheelDocs.add(doc);const onWheel=(e:WheelEvent)=>{if(settingsRef.current.flow!=="paginated"||e.ctrlKey||Math.abs(e.deltaY)<14)return;e.preventDefault();if(wheelLocked)return;e.preventDefault();wheelLocked=true;void safeNavigate(e.deltaY>0?"next":"prev").finally(()=>window.setTimeout(()=>{wheelLocked=false},150));window.setTimeout(()=>{wheelLocked=false},800)};doc.addEventListener("wheel",onWheel,{passive:false})};
+      const handleWheelDoc=(doc:Document|null|undefined)=>{if(settingsRef.current.flow!=="paginated"||!doc||wheelDocs.has(doc))return;wheelDocs.add(doc);const onWheel=(e:WheelEvent)=>{if(settingsRef.current.flow!=="paginated"||e.ctrlKey||Math.abs(e.deltaY)<14)return;e.preventDefault();if(wheelLocked)return;e.preventDefault();wheelLocked=true;void safeNavigate(e.deltaY>0?"next":"prev").finally(()=>window.setTimeout(()=>{wheelLocked=false},150));window.setTimeout(()=>{wheelLocked=false},800)};doc.addEventListener("wheel",onWheel,{passive:false})};
       onPaginatorLoad=(event:any)=>{try{handleWheelDoc(event.detail?.doc)}catch{}};
       view.renderer.addEventListener("load",onPaginatorLoad);
       // Touch phones use the renderer/document load events. Keep the mouse-wheel
@@ -580,8 +582,9 @@ function FoliateEpubReader({source,sourceBlob,bookId,settings,initialLocation,an
         const leave=()=>callbacksRef.current.onEdgeCue?.(null);
         const select=()=>{window.setTimeout(()=>{if(cancelled)return;const selection=doc.getSelection();if(!selection||selection.isCollapsed||!selection.rangeCount)return;const range=selection.getRangeAt(0),quote=selection.toString().trim();if(!quote)return;selectionGuard=Date.now()+450;const cfi=view.getCFI(index,range),rect=range.getBoundingClientRect(),bounds=(doc.defaultView?.frameElement as HTMLElement|null)?.getBoundingClientRect(),anchor=rangeAnchorContext(range);callbacksRef.current.onSelection({quote,locator:JSON.stringify({type:"epub",cfi,sectionIndex:index,...anchor,quote}),rect:{x:(bounds?.left||0)+rect.left,y:(bounds?.top||0)+rect.top,width:rect.width,height:rect.height}});selection.removeAllRanges()},0)};
         let touchStartX=0,touchStartY=0;
-        const touchStart=(e:TouchEvent)=>{touchStartX=e.touches[0]?.clientX||0;touchStartY=e.touches[0]?.clientY||0};
-        const touchEnd=(e:TouchEvent)=>{const dx=(e.changedTouches[0]?.clientX||0)-touchStartX,dy=(e.changedTouches[0]?.clientY||0)-touchStartY;if(Math.abs(dx)>12||Math.abs(dy)>12)selectionGuard=Date.now()+500;else select();};
+        const touchPoint=(touch:Touch)=>continuousTouchPoint(touch,(doc.defaultView?.frameElement as HTMLElement|null)?.getBoundingClientRect()||{left:0,top:0});
+        const touchStart=(e:TouchEvent)=>{if(!e.touches[0])return;const point=touchPoint(e.touches[0]);touchStartX=point.x;touchStartY=point.y};
+        const touchEnd=(e:TouchEvent)=>{if(!e.changedTouches[0])return;const point=touchPoint(e.changedTouches[0]),dx=point.x-touchStartX,dy=point.y-touchStartY;if(Math.abs(dx)>12||Math.abs(dy)>12)selectionGuard=Date.now()+500;else select();};
         const key=(event:KeyboardEvent)=>{if(event.defaultPrevented||(event.target as Element)?.closest?.("a,button,input,textarea,select,[contenteditable=true]"))return;const forwarded=new KeyboardEvent("keydown",{key:event.key,code:event.code,ctrlKey:event.ctrlKey,metaKey:event.metaKey,shiftKey:event.shiftKey,cancelable:true});if(!window.dispatchEvent(forwarded))event.preventDefault();};doc.addEventListener("keydown",key);doc.addEventListener("click",click);doc.addEventListener("mousemove",move);doc.addEventListener("mouseleave",leave);doc.addEventListener("mouseup",select);doc.addEventListener("touchstart",touchStart,{passive:true});doc.addEventListener("touchend",touchEnd,{passive:true});
         documentCleanups.set(doc,()=>{doc.removeEventListener("keydown",key);doc.removeEventListener("click",click);doc.removeEventListener("mousemove",move);doc.removeEventListener("mouseleave",leave);doc.removeEventListener("mouseup",select);doc.removeEventListener("touchstart",touchStart);doc.removeEventListener("touchend",touchEnd)});
         activeDocumentCleanup=()=>{for(const cleanup of documentCleanups.values())cleanup();documentCleanups.clear()};
@@ -592,7 +595,7 @@ function FoliateEpubReader({source,sourceBlob,bookId,settings,initialLocation,an
       view.addEventListener("draw-annotation",drawAnnotation);view.addEventListener("create-overlay",onOverlay);view.addEventListener("relocate",onRelocate);view.addEventListener("load",onLoad);
       // Host div wheel fallback (covers margin/gap areas outside the iframe)
       hostWheel=(e:WheelEvent)=>{if(settingsRef.current.flow!=="paginated"||e.ctrlKey||Math.abs(e.deltaY)<14)return;e.preventDefault();if(wheelLocked)return;e.preventDefault();wheelLocked=true;void safeNavigate(e.deltaY>0?"next":"prev").finally(()=>window.setTimeout(()=>{wheelLocked=false},150));window.setTimeout(()=>{wheelLocked=false},800)};
-      host.current?.addEventListener("wheel",hostWheel,{passive:false});
+      if(settingsRef.current.flow==="paginated")host.current?.addEventListener("wheel",hostWheel,{passive:false});
 
       // Initialize the view - use relocate event as the primary ready signal
       const target=foliateLocator(currentLocator.current);
