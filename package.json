@@ -1,6 +1,6 @@
 {
   "name": "papery-reader",
-  "version": "0.1.40",
+  "version": "0.1.41",
   "private": true,
   "engines": {
     "node": ">=22.13.0"
@@ -11,7 +11,7 @@
     "dev": "cross-env PAPERY_STATIC_BUILD=1 next dev",
     "build": "node scripts/tauri-build.mjs",
     "start": "WRANGLER_LOG_PATH=.wrangler/wrangler.log vinext start",
-    "test": "node --test tests/reader-core.test.mjs tests/drive-auth.test.mjs tests/drive-sync-upload.test.mjs tests/reading-stats.test.mjs tests/reader-resources.test.mjs tests/reading-session.test.mjs tests/mobile-runtime.test.mjs tests/txt-reader.test.mjs tests/reading-progress.test.mjs tests/reading-scheduler.test.mjs tests/epub-references.test.mjs tests/category-order.test.mjs",
+    "test": "node --test tests/reader-core.test.mjs tests/drive-auth.test.mjs tests/drive-sync-upload.test.mjs tests/reading-stats.test.mjs tests/reader-resources.test.mjs tests/reading-session.test.mjs tests/mobile-runtime.test.mjs tests/txt-reader.test.mjs tests/reading-progress.test.mjs tests/reading-scheduler.test.mjs tests/epub-references.test.mjs tests/category-order.test.mjs tests/library-organization.test.mjs",
     "validate:artifact": "bash scripts/validate-artifact.sh",
     "lint": "bash scripts/sites-env.sh -- eslint . --ignore-pattern dist --ignore-pattern .next --ignore-pattern public/vendor",
     "db:generate": "bash scripts/sites-env.sh -- drizzle-kit generate",
@@ -34,6 +34,7 @@
     "foliate-js": "1.0.1",
     "next": "16.2.6",
     "pdfjs-dist": "^4.10.38",
+    "pinyin-pro": "^3.29.4",
     "react": "19.2.6",
     "react-dom": "19.2.6"
   },
@@ -51,6 +52,8 @@
     "drizzle-kit": "0.31.10",
     "eslint": "9.39.4",
     "eslint-config-next": "16.2.6",
+    "fake-indexeddb": "^6.2.5",
+    "jsdom": "^29.1.1",
     "patch-package": "^8.0.1",
     "react-server-dom-webpack": "19.2.6",
     "tailwindcss": "4.2.1",

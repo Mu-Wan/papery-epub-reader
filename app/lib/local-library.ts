@@ -1,5 +1,6 @@
 import type { AppPreferences, BookFormat, ReaderAnnotation, ReaderSettings } from "./reader-types";
 import { portableSetting, validateSnapshot, type SyncRecord } from "./sync-merge";
+import { cleanAuthor } from "./book-metadata";
 
 export type LocalBookRecord = {
   id: string;
@@ -12,6 +13,12 @@ export type LocalBookRecord = {
   coverDataUrl?: string | null;
   blob: Blob;
   updatedAt: number;
+  importedAt?: number;
+  publicationYear?: number;
+  lastReadAt?: number;
+  metadataVersion?: number;
+  metadataEdited?: boolean;
+  fileName?: string;
 };
 
 const DB_NAME = "papery-library";
@@ -69,6 +76,26 @@ async function getAll<T>(storeName: string) {
 
 export const saveLocalBook = (record: LocalBookRecord) => put(BOOKS, record);
 export const loadLocalBooks = () => getAll<LocalBookRecord>(BOOKS);
+/** Merge in a transaction so delayed metadata work cannot overwrite a newer locator. */
+export async function updateLocalBook(id: string, changes: Partial<Pick<LocalBookRecord, "title" | "author" | "category" | "coverDataUrl" | "publicationYear" | "lastReadAt" | "metadataVersion" | "metadataEdited">>, onlyMissingMetadata = false) {
+  const db = await getLibrary();
+  return new Promise<LocalBookRecord | null>((resolve, reject) => {
+    let result: LocalBookRecord | null = null;
+    const tx = db.transaction(BOOKS, "readwrite"), store = tx.objectStore(BOOKS), request = store.get(id);
+    request.onsuccess = () => {
+      const current: LocalBookRecord | undefined = request.result;
+      if (!current) return;
+      const patch = { ...changes };
+      if (onlyMissingMetadata) {
+        if (current.metadataEdited || cleanAuthor(current.author)) delete patch.author;
+        if (current.metadataEdited || current.publicationYear) delete patch.publicationYear;
+        if (current.coverDataUrl) delete patch.coverDataUrl;
+      }
+      result = { ...current, ...patch, updatedAt: Date.now() }; store.put(result);
+    };
+    tx.oncomplete = () => resolve(result); tx.onerror = () => reject(tx.error); tx.onabort = () => reject(tx.error);
+  });
+}
 export const saveLocalAnnotation = (record: ReaderAnnotation) => put(ANNOTATIONS, record);
 export const loadLocalAnnotations = () => getAll<ReaderAnnotation>(ANNOTATIONS);
 

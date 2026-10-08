@@ -17,10 +17,26 @@ export function validateSnapshot(value: unknown): asserts value is SyncSnapshot 
     for (const item of v[name]) {
       if (typeof item[key] !== "string" || !String(item[key]).trim() || seen.has(String(item[key]))) throw new Error("备份记录标识无效或重复");
       seen.add(String(item[key]));
-      for (const field of ["updatedAt", "createdAt", "started_at"]) if (item[field] !== undefined && (typeof item[field] !== "number" || !Number.isFinite(item[field]) || Number(item[field]) < 0)) throw new Error("备份记录时间无效");
+      for (const field of ["updatedAt", "createdAt", "started_at", "importedAt", "lastReadAt"]) if (item[field] !== undefined && (typeof item[field] !== "number" || !Number.isFinite(item[field]) || Number(item[field]) < 0)) throw new Error("备份记录时间无效");
     }
   }
   for(const setting of v.settings)if(setting.key==="category-order"&&(!Array.isArray(setting.value)||setting.value.some(name=>typeof name!=="string"||!name.trim())))throw new Error("备份分类顺序无效");
+  for (const setting of v.settings) {
+    if (setting.key === "library-view") {
+      const view = setting.value as { groupBy?: unknown; sortBy?: unknown } | null;
+      if (!view || typeof view !== "object" || Array.isArray(view) || !["none", "author", "title", "published", "imported"].includes(String(view.groupBy)) || !["recent", "title", "author", "imported", "published"].includes(String(view.sortBy))) throw new Error("备份书架分组无效");
+    }
+    if (setting.key === "notes-view") {
+      const view = setting.value as { groupBy?: unknown } | null;
+      if (!view || typeof view !== "object" || Array.isArray(view) || !["time", "book", "author", "kind"].includes(String(view.groupBy))) throw new Error("备份笔记分组无效");
+    }
+  }
+  for (const book of v.books) {
+    if (book.publicationYear !== undefined && (typeof book.publicationYear !== "number" || !Number.isInteger(book.publicationYear) || book.publicationYear < 1000 || book.publicationYear > 9999)) throw new Error("备份出版年份无效");
+    if (book.fileName !== undefined && typeof book.fileName !== "string") throw new Error("备份书籍文件名无效");
+    if (book.metadataVersion !== undefined && (typeof book.metadataVersion !== "number" || !Number.isInteger(book.metadataVersion) || book.metadataVersion < 0)) throw new Error("备份书籍信息版本无效");
+    if (book.metadataEdited !== undefined && typeof book.metadataEdited !== "boolean") throw new Error("备份书籍信息标记无效");
+  }
   if (v.tombstones !== undefined) {
     if (!v.tombstones || typeof v.tombstones !== "object" || Array.isArray(v.tombstones)) throw new Error("同步删除记录无效");
     for (const [key,time] of Object.entries(v.tombstones)) {
@@ -33,7 +49,7 @@ export function validateSnapshot(value: unknown): asserts value is SyncSnapshot 
   for (const session of v.sessions) if (typeof session.book_id !== "string" || !session.book_id || typeof session.duration_seconds !== "number" || !Number.isFinite(session.duration_seconds) || session.duration_seconds < 0) throw new Error("备份阅读记录无效");
 }
 
-export const portableSetting = (key: string) => key === "app" || key === "category-order" || key === "last-read-book-id" || key.startsWith("reader:");
+export const portableSetting = (key: string) => key === "app" || key === "category-order" || key === "last-read-book-id" || key === "library-view" || key === "notes-view" || key.startsWith("reader:");
 
 const stamp = (item: SyncRecord) => Number(item.updatedAt || item.createdAt || item.started_at || 0);
 /** Deterministic last-edit-wins. Progress may move backwards; tombstones prevent resurrection. */

@@ -1,4 +1,5 @@
 import { loadPdfJs } from "./pdf-loader";
+import { authorFromFilename, authorFromFrontMatter, cleanAuthor, creditedAuthors, decodeMetadataText, publicationYear } from "./book-metadata";
 
 export async function readEpubMetadata(blob: Blob) {
   const { BlobReader, BlobWriter, TextWriter, ZipReader } = await import("@zip.js/zip.js");
@@ -31,9 +32,63 @@ export async function readEpubMetadata(blob: Blob) {
     }
     const entry = imagePath ? find(imagePath) : undefined;
     const mime = items.find(item => resolve(item.getAttribute("href") || "") === imagePath)?.getAttribute("media-type") || "image/jpeg";
-    const coverDataUrl = entry && !entry.directory ? await dataUrl(await entry.getData(new BlobWriter(mime))) : null;
-    return { title: opf.getElementsByTagNameNS("*", "title")[0]?.textContent?.trim(), author: opf.getElementsByTagNameNS("*", "creator")[0]?.textContent?.trim(), coverDataUrl };
+    const coverDataUrl = entry && !entry.directory ? await (async () => dataUrl(await entry.getData(new BlobWriter(mime))))().catch(() => null) : null;
+    const metas = Array.from(opf.getElementsByTagNameNS("*", "meta"));
+    let author = creditedAuthors(Array.from(opf.getElementsByTagNameNS("*", "creator")).map(creator => ({
+      name: creator.textContent || "", role: creator.getAttributeNS("http://www.idpf.org/2007/opf", "role") || creator.getAttribute("opf:role")
+        || metas.find(meta => meta.getAttribute("refines") === `#${creator.id}` && meta.getAttribute("property") === "role")?.textContent?.trim(),
+    })));
+    if (!author) {
+      // Only bounded front matter is scanned; chapter prose is never used to infer a name.
+      const ids = Array.from(opf.querySelectorAll("spine > itemref")).slice(0, 5).map(item => item.getAttribute("idref"));
+      for (const id of ids) {
+        const href = items.find(item => item.getAttribute("id") === id)?.getAttribute("href");
+        const front = href ? find(resolve(href).split("#")[0]) : undefined;
+        if (!front || front.directory || front.uncompressedSize > 256_000) continue;
+        const doc = new DOMParser().parseFromString(await front.getData(new TextWriter()), "text/html");
+        author = cleanAuthor(doc.querySelector('meta[name="author"],meta[name="dc.creator"],meta[name="DC.creator"]')?.getAttribute("content"));
+        doc.querySelectorAll("script,style").forEach(element => element.remove());
+        doc.querySelectorAll("p,div,br,h1,h2,h3,tr,li").forEach(element => element.append("\n"));
+        author ||= authorFromFrontMatter(doc.body.textContent || "");
+        if (author) break;
+      }
+    }
+    return { title: opf.getElementsByTagNameNS("*", "title")[0]?.textContent?.trim(), author,
+      publicationYear: Array.from(opf.getElementsByTagNameNS("*", "date")).filter(element => {
+        const event = element.getAttributeNS("http://www.idpf.org/2007/opf", "event") || element.getAttribute("opf:event");
+        return !event || event === "publication";
+      }).map(element => publicationYear(element.textContent)).find(Boolean), coverDataUrl };
   } finally { await zip.close(); }
+}
+
+export async function readBookMetadata(blob: Blob, format: string, filename = ""): Promise<{ title?: string; author: string; publicationYear?: number; totalPages?: number; coverDataUrl?: string | null }> {
+  if (format === "EPUB") {
+    const metadata = await readEpubMetadata(blob);
+    return { ...metadata, author: metadata.author || authorFromFilename(filename) };
+  }
+  if (format === "TXT") return { author: authorFromFrontMatter(decodeMetadataText(await blob.slice(0, 64_000).arrayBuffer())) || authorFromFilename(filename) };
+  const pdfjs = await loadPdfJs();
+  const pdf = await pdfjs.getDocument({ data: await blob.arrayBuffer() }).promise;
+  try {
+    const metadata = await pdf.getMetadata().catch(() => null);
+    const info = metadata?.info as { Title?: string; Author?: string } | undefined;
+    let author = cleanAuthor(info?.Author);
+    const creators = metadata?.metadata?.get("dc:creator");
+    author ||= creditedAuthors((Array.isArray(creators) ? creators : typeof creators === "string" ? [creators] : []).map((name: string) => ({ name })));
+    if (!author) for (let index = 1; index <= Math.min(5, pdf.numPages); index++) {
+      const content = await (await pdf.getPage(index)).getTextContent();
+      let text = "", previousY: number | undefined;
+      for (const item of content.items as { str?: string; transform?: number[]; hasEOL?: boolean }[]) {
+        if (!item.str) continue;
+        const y = item.transform?.[5];
+        if (previousY !== undefined && y !== undefined && Math.abs(y - previousY) > 3) text += "\n";
+        text += item.str + (item.hasEOL ? "\n" : " "); previousY = y;
+      }
+      author = authorFromFrontMatter(text);
+      if (author) break;
+    }
+    return { title: typeof info?.Title === "string" ? info.Title.trim() : undefined, author: author || authorFromFilename(filename), totalPages: pdf.numPages };
+  } finally { await pdf.destroy(); }
 }
 
 function dataUrl(blob: Blob): Promise<string> {

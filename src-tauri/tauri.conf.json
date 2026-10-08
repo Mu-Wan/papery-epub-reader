@@ -1,6 +1,6 @@
 {
   "productName": "Papery Reader",
-  "version": "0.1.40",
+  "version": "0.1.41",
   "identifier": "com.papery.reader",
   "build": {
     "beforeDevCommand": "",
