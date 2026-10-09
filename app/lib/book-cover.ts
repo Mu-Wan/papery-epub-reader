@@ -1,4 +1,4 @@
-import { loadPdfJs } from "./pdf-loader";
+import { loadPdfJs, pdfDocumentOptions } from "./pdf-loader";
 import { authorFromFilename, authorFromFrontMatter, cleanAuthor, creditedAuthors, decodeMetadataText, publicationYear } from "./book-metadata";
 
 export async function readEpubMetadata(blob: Blob) {
@@ -68,7 +68,7 @@ export async function readBookMetadata(blob: Blob, format: string, filename = ""
   }
   if (format === "TXT") return { author: authorFromFrontMatter(decodeMetadataText(await blob.slice(0, 64_000).arrayBuffer())) || authorFromFilename(filename) };
   const pdfjs = await loadPdfJs();
-  const pdf = await pdfjs.getDocument({ data: await blob.arrayBuffer() }).promise;
+  const pdf = await pdfjs.getDocument(pdfDocumentOptions(await blob.arrayBuffer())).promise;
   try {
     const metadata = await pdf.getMetadata().catch(() => null);
     const info = metadata?.info as { Title?: string; Author?: string } | undefined;
@@ -107,7 +107,7 @@ export async function extractBookCover(blob: Blob, format: string): Promise<stri
   }
   if (format === "PDF") {
     const pdfjs = await loadPdfJs();
-    const pdf = await pdfjs.getDocument({ data: await blob.arrayBuffer() }).promise;
+    const pdf = await pdfjs.getDocument(pdfDocumentOptions(await blob.arrayBuffer())).promise;
     try {
       const page = await pdf.getPage(1);
       const base = page.getViewport({ scale: 1 });

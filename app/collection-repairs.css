@@ -63,3 +63,7 @@
 .appShell[data-compact-layout=true]:not([data-native-window=true]) .readerPage[data-reading-ui] .readingStage { padding-top:calc(12px + var(--safe-top))!important; }
 .appShell .readerPage[data-reading-ui=hidden] .readingUiToggle { display:none!important; }
 .appShell .readerPage[data-reading-ui=hidden] .readerTop { visibility:hidden; }
+.readingStage .pdfReaderShell { width:100%; }
+.pdfReaderShell .pdfHost { background-color:transparent; }
+.pdfReaderShell .pdfPage { box-shadow:0 2px 8px rgba(49,42,31,.025); }
+.pdfReaderShell .pdfPage canvas { box-shadow:none; }

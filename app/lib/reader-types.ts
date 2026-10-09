@@ -4,6 +4,7 @@ export type ReaderSpread = "single" | "double";
 export type AnnotationStyle = "highlight" | "underline" | "bookmark";
 
 export type ReaderSettings = {
+  pdfMode?: "original" | "text";
   fontFamily: "system" | "lxgw" | "serif" | "sans";
   fontSize: number;
   lineHeight: number;
@@ -23,8 +24,8 @@ export const defaultReaderSettings: ReaderSettings = {
   paragraphSpacing: 14,
   verticalMargin: 5,
   horizontalMargin: 7,
-  pageColor: "#FCFBFA",
-  paperTexture: "paper",
+  pageColor: "#F0E6D2",
+  paperTexture: "soft",
   flow: "paginated",
   spread: "single",
 };

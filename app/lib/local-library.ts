@@ -246,7 +246,8 @@ export async function importLibraryBackup(file:File){
     if(!item.value||typeof item.value!=="object"||Array.isArray(item.value))throw new Error("备份偏好设置无效");
     const value=item.value as Record<string,unknown>;
     for(const key of ["fontSize","lineHeight","paragraphSpacing","verticalMargin","horizontalMargin"])if(value[key]!==undefined&&(typeof value[key]!=="number"||!Number.isFinite(value[key])))throw new Error("备份排版设置无效");
-    for(const key of ["profileName","avatarDataUrl","fontFamily","flow","spread","pageColor"])if(value[key]!==undefined&&typeof value[key]!=="string")throw new Error("备份偏好设置无效");
+    for(const key of ["profileName","avatarDataUrl","fontFamily","flow","spread","pageColor","pdfMode"])if(value[key]!==undefined&&typeof value[key]!=="string")throw new Error("备份偏好设置无效");
+    if(value.pdfMode!==undefined&&value.pdfMode!=="original"&&value.pdfMode!=="text")throw new Error("备份 PDF 阅读模式无效");
   }
   // Decode before opening the transaction, so malformed data cannot partially restore.
   const decodedBooks=data.books.map(book=>({...book,blob:dataUrlToBlob(String(book.blob))}));

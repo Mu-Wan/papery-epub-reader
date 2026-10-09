@@ -3,6 +3,14 @@ import assert from 'node:assert/strict';
 import { ResourceCache, openEpubArchive, fingerprintBuffer, releaseReaderResources } from '../app/lib/reader-resources.mjs';
 import { configure, ZipWriter, BlobWriter, TextReader } from '@zip.js/zip.js';
 configure({ useWebWorkers: false });
+test('EPUB ZIP resolves percent-encoded Unicode and reserved image filenames without changing case', async()=>{
+  const writer=new ZipWriter(new BlobWriter());
+  await writer.add('images/图 #1.JPG',new TextReader('image-bytes'));
+  const archive=await openEpubArchive('encoded-illustration',await writer.close());
+  assert.equal(await (await archive.loadBlob('images/%E5%9B%BE%20%231.JPG')).text(),'image-bytes');
+  assert.equal(archive.loadBlob('images/图 #1.jpg'),null);
+  releaseReaderResources('encoded-illustration');
+});
 
 async function fixture(text) {
   const writer = new ZipWriter(new BlobWriter('application/epub+zip'));

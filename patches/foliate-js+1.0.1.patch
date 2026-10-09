@@ -1,3 +1,57 @@
+diff --git a/node_modules/foliate-js/epub.js b/node_modules/foliate-js/epub.js
+index d2b2eb3..f374f7e 100644
+--- a/node_modules/foliate-js/epub.js
++++ b/node_modules/foliate-js/epub.js
+@@ -784,10 +784,19 @@ class Loader {
+     }
+     async loadHref(href, base, parents = []) {
+         if (isExternal(href)) return href
+-        const path = resolveURL(href, base)
+-        const item = this.manifest.find(item => item.href === path)
++        if (!href || href.startsWith('#')) return href
++        const hash = href.indexOf('#')
++        const fragment = hash < 0 ? '' : href.slice(hash)
++        const path = resolveURL(hash < 0 ? href : href.slice(0, hash), base)
++        let item = this.manifest.find(item => item.href === path)
++        // Some producers omit illustrations from the OPF; load only existing assets.
++        if (!item) {
++            const types = { svg: MIME.SVG, png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', gif: 'image/gif', webp: 'image/webp', avif: 'image/avif', css: MIME.CSS, woff: 'font/woff', woff2: 'font/woff2', ttf: 'font/ttf', otf: 'font/otf' }
++            const mediaType = types[String(path).split('.').at(-1)?.toLowerCase()]
++            if (mediaType && await this.loadBlob(path)) item = { href: path, mediaType }
++        }
+         if (!item) return href
+-        return this.loadItem(item, parents.concat(base))
++        return (await this.loadItem(item, parents.concat(base))) + fragment
+     }
+     async loadReplaced(item, parents = []) {
+         const { href, mediaType } = item
+@@ -836,12 +845,25 @@ class Loader {
+                 }
+             }
+             // replace hrefs (excluding anchors)
+-            // TODO: srcset?
++            // PAPERY: SVG 2 image href and responsive picture sources are assets too.
+             const replace = async (el, attr) => el.setAttribute(attr,
+                 await this.loadHref(el.getAttribute(attr), href, parents))
+             for (const el of doc.querySelectorAll('link[href]')) await replace(el, 'href')
+             for (const el of doc.querySelectorAll('[src]')) await replace(el, 'src')
+             for (const el of doc.querySelectorAll('[poster]')) await replace(el, 'poster')
++            for (const el of doc.querySelectorAll('image[href], use[href]')) {
++                const value = el.getAttribute('href')
++                if (value && !value.startsWith('#')) await replace(el, 'href')
++            }
++            for (const el of doc.querySelectorAll('[srcset]')) {
++                const value = el.getAttribute('srcset')
++                // Embedded data URLs remain self-contained, including their commas.
++                if (!value || value.trim().startsWith('data:')) continue
++                el.setAttribute('srcset', (await Promise.all(value.split(',').map(async candidate => {
++                    const match = candidate.trim().match(/^(\S+)(\s+.*)?$/)
++                    return match ? (await this.loadHref(match[1], href, parents)) + (match[2] || '') : ''
++                }))).join(', '))
++            }
+             for (const el of doc.querySelectorAll('object[data]')) await replace(el, 'data')
+             for (const el of doc.querySelectorAll('[*|href]:not([href])'))
+                 el.setAttributeNS(NS.XLINK, 'href', await this.loadHref(
 diff --git a/node_modules/foliate-js/paginator.js b/node_modules/foliate-js/paginator.js
 index 95c4d0d..63ea649 100644
 --- a/node_modules/foliate-js/paginator.js

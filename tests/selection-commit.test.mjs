@@ -1,0 +1,6 @@
+import{test}from'node:test';import assert from'node:assert/strict';
+import{createSelectionCommitGuard}from'../app/lib/selection-commit.ts';
+function setup(){let id=0;const tasks=new Map(),guard=createSelectionCommitGuard(work=>{tasks.set(++id,work);return id},id=>tasks.delete(id));return{guard,flush(){for(const task of tasks.values())task();tasks.clear();}};}
+test('An unfinished or secondary-button release cannot open a selection composer',()=>{const{guard,flush}=setup();let count=0;guard.down({button:0});guard.up({button:1,buttons:1},()=>count++);guard.up({button:0,buttons:1},()=>count++);flush();assert.equal(count,0);guard.up({button:0,buttons:0},()=>count++);flush();assert.equal(count,1);});
+test('A new drag cancels the previous mouseup callback before it can read the new partial selection',()=>{const{guard,flush}=setup();let count=0;guard.down({button:0});guard.up({button:0,buttons:0},()=>count++);guard.down({button:0});flush();assert.equal(count,0);guard.up({button:0,buttons:0},()=>count++);flush();assert.equal(count,1);});
+test('Unmount cancels pending selection and an unrelated mouseup does not submit stale text',()=>{const{guard,flush}=setup();let count=0;guard.up({button:0,buttons:0},()=>count++);guard.down({button:0});guard.up({button:0,buttons:0},()=>count++);guard.cancel();flush();assert.equal(count,0);});

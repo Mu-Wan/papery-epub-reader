@@ -5,12 +5,24 @@ const buffers = new Map<string, { promise: Promise<ArrayBuffer>; bytes: number }
 // Cache eviction only drops our reference; active readers retain their buffers.
 const maxBytes = 32 * 1024 * 1024, maxSources = 2;
 
-export function readReaderSource(source: string) {
+export function readReaderSource(source: string, sourceBlob?: Blob): Promise<ArrayBuffer> {
+  // Read the persisted bytes directly, independently of WebView blob-URL lifetime.
+  if (sourceBlob) return sourceBlob.arrayBuffer().then(buffer => {
+    if (!buffer.byteLength) throw new Error("书籍文件为空，请重新导入原文件");
+    return buffer;
+  });
   const cached = buffers.get(source);
-  if (cached) { buffers.delete(source); buffers.set(source, cached); return cached.promise; }
+  if (cached) { buffers.delete(source); buffers.set(source, cached); return cached.promise.then(buffer => {
+    if (buffer.byteLength) return buffer;
+    buffers.delete(source);
+    return readReaderSource(source);
+  }); }
   const entry = { promise: fetch(source).then(response => {
     if (!response.ok) throw new Error("读取文件失败");
     return response.arrayBuffer();
+  }).then(buffer => {
+    if (!buffer.byteLength) throw new Error("书籍文件为空，请重新导入原文件");
+    return buffer;
   }), bytes: 0 };
   buffers.set(source, entry);
   void entry.promise.then(buffer => {

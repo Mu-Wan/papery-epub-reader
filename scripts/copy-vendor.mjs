@@ -1,4 +1,4 @@
-import { copyFile, mkdir } from "node:fs/promises";
+import { copyFile, mkdir, cp } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -36,6 +36,9 @@ const filesToCopy = [
 async function main() {
   // 创建 public/vendor 目录
   await mkdir(vendorDir, { recursive: true });
+  for (const folder of ["cmaps", "standard_fonts"]) {
+    await cp(join(projectRoot,"node_modules","pdfjs-dist",folder),join(vendorDir,folder),{recursive:true});
+  }
   console.log(`✓ Created vendor directory: ${vendorDir}`);
 
   let copied = 0;

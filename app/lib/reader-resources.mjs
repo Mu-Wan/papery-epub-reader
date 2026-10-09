@@ -57,13 +57,18 @@ export function openEpubArchive(source, sourceBlob) {
     const reader = new ZipReader(new BlobReader(file));
     const entries = await reader.getEntries();
     const map = new Map(entries.map(item => [item.filename, item]));
+    const find = name => {
+      if (map.has(name)) return map.get(name);
+      let decoded; try { decoded = decodeURIComponent(name); } catch { return null; }
+      return map.get(decoded) || null;
+    };
     return {
       entries,
-      getSize: name => map.get(name)?.uncompressedSize || 0,
-      loadText: name => map.has(name)
-        ? entry.cache.get(`text:${name}`, () => map.get(name).getData(new TextWriter())) : null,
-      loadBlob: (name, type) => map.has(name)
-        ? entry.cache.get(`blob:${type || ''}:${name}`, () => map.get(name).getData(new BlobWriter(type))) : null,
+      getSize: name => find(name)?.uncompressedSize || 0,
+      loadText: name => { const item = find(name); return item
+        ? entry.cache.get(`text:${item.filename}`, () => item.getData(new TextWriter())) : null; },
+      loadBlob: (name, type) => { const item = find(name); return item
+        ? entry.cache.get(`blob:${type || ''}:${item.filename}`, () => item.getData(new BlobWriter(type))) : null; },
     };
   })();
   archives.set(source, entry);

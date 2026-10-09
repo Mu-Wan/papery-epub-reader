@@ -8,9 +8,11 @@ import type {
   ReaderAnnotation, ReaderApi, ReaderLocation, ReaderSearchResult, ReaderSelection, ReaderSettings, TocItem,
 } from "../lib/reader-types";
 import { pdfPageOffsets, pageAtOffset } from "../lib/reader-math";
-import { loadPdfJs } from "../lib/pdf-loader";
+import { loadPdfJs, pdfDocumentOptions } from "../lib/pdf-loader";
 import { loadSetting, saveSetting } from "../lib/local-library";
 import { PdfTools } from "./PdfTools";
+import { buildPdfReflow, pdfPageText, pdfReflowPage, resolvePdfQuote, type PdfReflowText } from "../lib/pdf-reflow";
+import { createSelectionCommitGuard } from "../lib/selection-commit";
 import { annotationColor, annotationPaint } from "../lib/annotation-color";
 import { readReaderSource as readSource } from "../lib/reader-source";
 import { createEpubBook, fingerprintBuffer } from "../lib/reader-resources.mjs";
@@ -53,6 +55,19 @@ function fontStack(font: ReaderSettings["fontFamily"]) {
   if (font === "serif") return 'Georgia, "Songti SC", "Noto Serif CJK SC", "Noto Serif SC", serif';
   if (font === "sans") return 'Inter, "PingFang SC", "Noto Sans CJK SC", "Microsoft YaHei", sans-serif';
   return 'system-ui, "PingFang SC", "Noto Sans CJK SC", "Microsoft YaHei", sans-serif';
+}
+
+function useSelectionCommitGuard(){
+  const guard=useMemo(()=>createSelectionCommitGuard(),[]);
+  useEffect(()=>{
+    const down=(event:MouseEvent)=>guard.down(event),cancel=()=>guard.cancel();
+    // Focusing an EPUB iframe blurs its parent window while the app still has focus.
+    const blur=()=>{if(!document.hasFocus())cancel();},visibility=()=>{if(document.hidden)cancel();};
+    document.addEventListener("mousedown",down,true);document.addEventListener("touchstart",cancel,true);
+    window.addEventListener("blur",blur);document.addEventListener("visibilitychange",visibility);
+    return()=>{cancel();document.removeEventListener("mousedown",down,true);document.removeEventListener("touchstart",cancel,true);window.removeEventListener("blur",blur);document.removeEventListener("visibilitychange",visibility)};
+  },[guard]);
+  return guard;
 }
 
 function parseLocator<T>(value?: string): T | null {
@@ -234,7 +249,8 @@ function renderMarkedText(text:string,marks:TextMark[]){
   return result;
 }
 
-function TxtReader({source,bookId,settings,initialLocation,annotations,onApi,onLocation,onToc,onSelection,onAnnotation}:Props) {
+function TxtReader({source,sourceBlob,bookId,settings,initialLocation,annotations,onApi,onLocation,onToc,onSelection,onAnnotation,plainTextHeadings=false}:Props&{plainTextHeadings?:boolean}) {
+  const selectionCommit=useSelectionCommitGuard();
   const host=useRef<HTMLDivElement>(null),content=useRef<HTMLElement>(null),markSelectionGuard=useRef(0);
   const nodesRef=useRef(new Map<number,HTMLElement>()),offsetRef=useRef(0),pageRef=useRef(0),renderedPageRef=useRef(0);
   const lastLocation=useRef<ReaderLocation|null>(null),locationCallback=useRef(onLocation);
@@ -257,7 +273,7 @@ function TxtReader({source,bookId,settings,initialLocation,annotations,onApi,onL
     return loc?.type==="txt"&&typeof loc.start==="number"&&typeof loc.end==="number"
       ? [{start:loc.start,end:loc.end,style:annotation.style,color:annotationColor(annotation.color),nonce:0,id:annotation.id}] : [];
   }),[annotations]);
-  const txtMarkup=useMemo(()=>{const chapterOffsets=new Set(parsed.chapters.map(chapter=>chapter.offset));return paragraphs.map(paragraph=>{const marks:TextMark[]=[...txtMarks.filter(mark=>mark.end>paragraph.start&&mark.start<paragraph.end).map(mark=>({...mark,start:mark.start-paragraph.start,end:mark.end-paragraph.start})),...(searchTarget&&searchTarget.end>paragraph.start&&searchTarget.start<paragraph.end?[{start:searchTarget.start-paragraph.start,end:searchTarget.end-paragraph.start,style:"search",color:"#ffb347",nonce:searchTarget.nonce}]:[])];const tag=chapterOffsets.has(paragraph.start)?"h2":"p";return `<${tag} data-txt-start="${paragraph.start}">${renderMarkedText(paragraph.text,marks)}</${tag}>`}).join("")},[paragraphs,parsed.chapters,txtMarks,searchTarget]);
+  const txtMarkup=useMemo(()=>{const chapterOffsets=new Set(parsed.chapters.map(chapter=>chapter.offset));return paragraphs.map(paragraph=>{const marks:TextMark[]=[...txtMarks.filter(mark=>mark.end>paragraph.start&&mark.start<paragraph.end).map(mark=>({...mark,start:mark.start-paragraph.start,end:mark.end-paragraph.start})),...(searchTarget&&searchTarget.end>paragraph.start&&searchTarget.start<paragraph.end?[{start:searchTarget.start-paragraph.start,end:searchTarget.end-paragraph.start,style:"search",color:"#ffb347",nonce:searchTarget.nonce}]:[])];const tag=!plainTextHeadings&&chapterOffsets.has(paragraph.start)?"h2":"p";return `<${tag} data-txt-start="${paragraph.start}">${renderMarkedText(paragraph.text,marks)}</${tag}>`}).join("")},[paragraphs,parsed.chapters,txtMarks,searchTarget,plainTextHeadings]);
   // React treats a new dangerouslySetInnerHTML object as a DOM update. Keep it
   // stable on page turns so nodesRef continues to measure attached text nodes.
   const txtContent=useMemo(()=>({__html:txtMarkup}),[txtMarkup]);
@@ -266,11 +282,11 @@ function TxtReader({source,bookId,settings,initialLocation,annotations,onApi,onL
   const pageGap=effectiveSpread==="double"?28:24,logicalPageWidth=effectiveSpread==="double"?Math.max(280,(viewport.width-28)/2):viewport.width;
   const horizontalPadding=logicalPageWidth*Math.min(30,Math.max(5,settings.horizontalMargin))/100,verticalPadding=viewport.height*Math.min(18,Math.max(0,settings.verticalMargin))/100;
   const usableWidth=Math.max(180,logicalPageWidth-horizontalPadding*2),usableHeight=Math.max(180,viewport.height-verticalPadding*2),columnGap=horizontalPadding*2+pageGap,columnStride=usableWidth+columnGap;
-  const paginationKey=useMemo(()=>sourceFingerprint?JSON.stringify([2,sourceFingerprint,navigator.userAgent,settings.flow,settings.fontFamily,settings.fontSize,settings.lineHeight,settings.paragraphSpacing,usableWidth,usableHeight,columnGap]):"",[sourceFingerprint,settings.flow,settings.fontFamily,settings.fontSize,settings.lineHeight,settings.paragraphSpacing,usableWidth,usableHeight,columnGap]);
+  const paginationKey=useMemo(()=>sourceFingerprint?JSON.stringify([2,sourceFingerprint,navigator.userAgent,settings.flow,settings.fontFamily,settings.fontSize,settings.lineHeight,settings.paragraphSpacing,usableWidth,usableHeight,columnGap,plainTextHeadings]):"",[sourceFingerprint,settings.flow,settings.fontFamily,settings.fontSize,settings.lineHeight,settings.paragraphSpacing,usableWidth,usableHeight,columnGap,plainTextHeadings]);
   const [pagination,setPagination]=useState<{key:string;counts:number[]}|null>(null);
   const paginationCounts=pagination?.key===paginationKey?pagination.counts:null;
 
-  useEffect(()=>{let cancelled=false;readSource(source).then(buffer=>{if(!cancelled){setText(decodeTxt(buffer));void fingerprintBuffer(buffer).catch(()=>`uncached:${Date.now()}`).then(value=>{if(!cancelled)setSourceFingerprint(value)})}}).catch(reason=>{if(!cancelled)setError(reason instanceof Error?reason.message:"无法解析 TXT")}).finally(()=>{if(!cancelled)setLoading(false)});return()=>{cancelled=true}},[source]);
+  useEffect(()=>{let cancelled=false;readSource(source,sourceBlob).then(buffer=>{if(!cancelled){setText(decodeTxt(buffer));void fingerprintBuffer(buffer).catch(()=>`uncached:${Date.now()}`).then(value=>{if(!cancelled)setSourceFingerprint(value)})}}).catch(reason=>{if(!cancelled)setError(reason instanceof Error?reason.message:"无法解析 TXT")}).finally(()=>{if(!cancelled)setLoading(false)});return()=>{cancelled=true}},[source,sourceBlob]);
   useEffect(()=>()=>{if(scrollTimer.current!==null)window.clearTimeout(scrollTimer.current);if(searchTimer.current!==null)window.clearTimeout(searchTimer.current)},[]);
   useLayoutEffect(()=>{if(!text||initialized.current)return;initialized.current=true;offsetRef.current=initialOffset;jumpRequest.current={offset:initialOffset,cue:false,completed:parseLocator<PortableTextAnchor>(initialLocation)?.completed===true};setSectionIndex(sectionForOffset(initialOffset))},[text,initialOffset,sectionForOffset,initialLocation]);
   useEffect(()=>{if(text)onToc(parsed.chapters.map(chapter=>({id:`txt-${chapter.index}`,label:chapter.title,level:0,locator:JSON.stringify({type:"txt",offset:chapter.offset})})))},[text,parsed.chapters,onToc]);
@@ -315,7 +331,7 @@ function TxtReader({source,bookId,settings,initialLocation,annotations,onApi,onL
       const measureNext=()=>{
         if(cancelled||!measure)return;
         const section=sections[index];
-        measure.innerHTML=paragraphsForRange(parsed.normalized,section.start,section.end).map(paragraph=>{const tag=chapterOffsets.has(paragraph.start)?"h2":"p";return `<${tag} data-txt-start="${paragraph.start}">${escapeHtml(paragraph.text)}</${tag}>`}).join("");
+        measure.innerHTML=paragraphsForRange(parsed.normalized,section.start,section.end).map(paragraph=>{const tag=!plainTextHeadings&&chapterOffsets.has(paragraph.start)?"h2":"p";return `<${tag} data-txt-start="${paragraph.start}">${escapeHtml(paragraph.text)}</${tag}>`}).join("");
         counts[index]=settings.flow==="paginated"?Math.max(1,Math.round((measure.scrollWidth+columnGap)/Math.max(1,columnStride))):Math.max(1,measure.getBoundingClientRect().height);
         // Publish only when the current page's prefix is known; intermediate
         // totals are never displayed and should not rerender the whole reader.
@@ -325,7 +341,7 @@ function TxtReader({source,bookId,settings,initialLocation,annotations,onApi,onL
       schedule();
     })().catch(reason=>{holder?.remove();console.warn("[Papery] TXT pagination:",reason)});
     return()=>{cancelled=true;window.clearTimeout(timer);if(idle&&typeof window.cancelIdleCallback==="function")window.cancelIdleCallback(idle);holder?.remove()};
-  },[text,bookId,paginationKey,settings.flow,settings.fontFamily,settings.fontSize,sections,sectionForOffset,parsed.normalized,parsed.chapters,usableWidth,usableHeight,columnGap,columnStride,viewport.height,verticalPadding]);
+  },[text,bookId,paginationKey,settings.flow,settings.fontFamily,settings.fontSize,sections,sectionForOffset,parsed.normalized,parsed.chapters,usableWidth,usableHeight,columnGap,columnStride,viewport.height,verticalPadding,plainTextHeadings]);
 
   const paragraphForOffset=useCallback((offset:number)=>{let low=0,high=paragraphs.length-1,found=paragraphs[0];while(low<=high){const middle=(low+high)>>1,item=paragraphs[middle];if(item.start<=offset){found=item;low=middle+1}else high=middle-1}return found},[paragraphs]);
   const elementForOffset=useCallback((offset:number)=>{const paragraph=paragraphForOffset(offset);return paragraph?nodesRef.current.get(paragraph.start)||null:null},[paragraphForOffset]);
@@ -401,7 +417,7 @@ function TxtReader({source,bookId,settings,initialLocation,annotations,onApi,onL
   if(loading&&!text)return <div className={`txtReader flow-${settings.flow}`} style={{opacity:0}}/>;
   const base=effectiveSpread==="double"?Math.floor(page/2)*2:page;
   const contentStyle=settings.flow==="paginated"?{fontFamily:fontStack(settings.fontFamily),fontSize:settings.fontSize,lineHeight:settings.lineHeight,color:readerTextColor(settings.pageColor),width:usableWidth,height:usableHeight,marginTop:verticalPadding,marginLeft:horizontalPadding,columnWidth:usableWidth,columnGap,transform:`translateX(${-base*columnStride}px)`,"--paragraph-spacing":`${settings.paragraphSpacing}px`}:{display:"flow-root",fontFamily:fontStack(settings.fontFamily),fontSize:settings.fontSize,lineHeight:settings.lineHeight,color:readerTextColor(settings.pageColor),padding:`${verticalPadding}px ${horizontalPadding}px`,"--paragraph-spacing":`${settings.paragraphSpacing}px`};
-  return <div ref={host} className={`txtReader flow-${settings.flow} spread-${effectiveSpread}`} onMouseUp={select} onTouchEnd={select}
+  return <div ref={host} className={`txtReader flow-${settings.flow} spread-${effectiveSpread}`} onMouseUp={event=>selectionCommit.up(event,select)} onTouchEnd={event=>{if(!event.touches.length)select()}}
     onClick={event=>{const mark=(event.target as HTMLElement).closest<HTMLElement>("[data-annotation-id]");if(!mark)return;event.stopPropagation();if(Date.now()<markSelectionGuard.current)return;const annotation=annotations.find(item=>item.id===mark.dataset.annotationId);if(annotation)onAnnotation?.(annotation)}}
     onKeyDown={event=>{const mark=(event.target as HTMLElement).closest<HTMLElement>("[data-annotation-id]");if(mark&&(event.key==="Enter"||event.key===" ")){event.preventDefault();event.stopPropagation();const annotation=annotations.find(item=>item.id===mark.dataset.annotationId);if(annotation)onAnnotation?.(annotation)}}}
     onWheel={event=>{if(settings.flow!=="paginated"||Math.abs(event.deltaY)<12||wheelLocked.current)return;event.preventDefault();wheelLocked.current=true;if(event.deltaY>0)next();else prev();window.setTimeout(()=>wheelLocked.current=false,160)}}
@@ -474,6 +490,7 @@ function applyFoliateLayout(view:any,host:HTMLElement|null,settings:ReaderSettin
 }
 
 function FoliateEpubReader({source,sourceBlob,bookId,settings,initialLocation,annotations,onApi,onLocation,onToc,onSelection,onAnnotation,onEdgeCue,onToggleUi}:Props){
+  const selectionCommit=useSelectionCommitGuard();
   const [referenceController,setReferenceController]=useState<EpubReferenceController|null>(null);
   const [reference,setReference]=useState<EpubReferenceState|null>(null),[referenceReturn,setReferenceReturn]=useState(false);
   const host=useRef<HTMLDivElement>(null),viewRef=useRef<any>(null),annotationsRef=useRef(annotations),settingsRef=useRef(settings);
@@ -579,14 +596,17 @@ function FoliateEpubReader({source,sourceBlob,bookId,settings,initialLocation,an
         const pointerRatio=(event:MouseEvent)=>{const bounds=host.current?.getBoundingClientRect(),frame=(doc.defaultView?.frameElement as HTMLElement|null)?.getBoundingClientRect();return bounds&&frame?(frame.left+event.clientX-bounds.left)/Math.max(1,bounds.width):event.clientX/Math.max(1,doc.defaultView?.innerWidth||1)};
         const click=(event:MouseEvent)=>{if(Date.now()-Number(view.__paperyMarkClick||0)<100)return;if(event.defaultPrevented||Date.now()<selectionGuard||doc.getSelection()?.toString()||(event.target as Element|null)?.closest?.("a,button,input,select,textarea"))return;const ratio=pointerRatio(event);if(settingsRef.current.flow==="scrolled"){if(ratio>=prevZone&&ratio<nextZone)callbacksRef.current.onToggleUi?.();return;}if(ratio<prevZone)void safeNavigate("prev");else if(ratio>=nextZone)void safeNavigate("next");else callbacksRef.current.onToggleUi?.()};
         const move=(event:MouseEvent)=>{const ratio=pointerRatio(event);callbacksRef.current.onEdgeCue?.(ratio<prevZone?"left":ratio>=nextZone?"right":null)};
+        const down=(event:MouseEvent)=>{selectionCommit.down(event);const ratio=pointerRatio(event);if(settingsRef.current.flow==="paginated"&&event.button===0&&event.detail>1&&(ratio<prevZone||ratio>=nextZone)&&!(event.target as Element)?.closest?.("a,button,input,textarea,select"))event.preventDefault()};
         const leave=()=>callbacksRef.current.onEdgeCue?.(null);
-        const select=()=>{window.setTimeout(()=>{if(cancelled)return;const selection=doc.getSelection();if(!selection||selection.isCollapsed||!selection.rangeCount)return;const range=selection.getRangeAt(0),quote=selection.toString().trim();if(!quote)return;selectionGuard=Date.now()+450;const cfi=view.getCFI(index,range),rect=range.getBoundingClientRect(),bounds=(doc.defaultView?.frameElement as HTMLElement|null)?.getBoundingClientRect(),anchor=rangeAnchorContext(range);callbacksRef.current.onSelection({quote,locator:JSON.stringify({type:"epub",cfi,sectionIndex:index,...anchor,quote}),rect:{x:(bounds?.left||0)+rect.left,y:(bounds?.top||0)+rect.top,width:rect.width,height:rect.height}});selection.removeAllRanges()},0)};
+        const select=()=>{if(cancelled)return;const selection=doc.getSelection();if(!selection||selection.isCollapsed||!selection.rangeCount)return;const range=selection.getRangeAt(0),quote=selection.toString().trim();if(!quote)return;selectionGuard=Date.now()+450;const cfi=view.getCFI(index,range),rect=range.getBoundingClientRect(),bounds=(doc.defaultView?.frameElement as HTMLElement|null)?.getBoundingClientRect(),anchor=rangeAnchorContext(range);callbacksRef.current.onSelection({quote,locator:JSON.stringify({type:"epub",cfi,sectionIndex:index,...anchor,quote}),rect:{x:(bounds?.left||0)+rect.left,y:(bounds?.top||0)+rect.top,width:rect.width,height:rect.height}});selection.removeAllRanges()};
+        const mouseUp=(event:MouseEvent)=>selectionCommit.up(event,select);
         let touchStartX=0,touchStartY=0;
         const touchPoint=(touch:Touch)=>continuousTouchPoint(touch,(doc.defaultView?.frameElement as HTMLElement|null)?.getBoundingClientRect()||{left:0,top:0});
-        const touchStart=(e:TouchEvent)=>{if(!e.touches[0])return;const point=touchPoint(e.touches[0]);touchStartX=point.x;touchStartY=point.y};
+        const touchStart=(e:TouchEvent)=>{selectionCommit.cancel();if(!e.touches[0])return;const point=touchPoint(e.touches[0]);touchStartX=point.x;touchStartY=point.y};
         const touchEnd=(e:TouchEvent)=>{if(!e.changedTouches[0])return;const point=touchPoint(e.changedTouches[0]),dx=point.x-touchStartX,dy=point.y-touchStartY;if(Math.abs(dx)>12||Math.abs(dy)>12)selectionGuard=Date.now()+500;else select();};
-        const key=(event:KeyboardEvent)=>{if(event.defaultPrevented||(event.target as Element)?.closest?.("a,button,input,textarea,select,[contenteditable=true]"))return;const forwarded=new KeyboardEvent("keydown",{key:event.key,code:event.code,ctrlKey:event.ctrlKey,metaKey:event.metaKey,shiftKey:event.shiftKey,cancelable:true});if(!window.dispatchEvent(forwarded))event.preventDefault();};doc.addEventListener("keydown",key);doc.addEventListener("click",click);doc.addEventListener("mousemove",move);doc.addEventListener("mouseleave",leave);doc.addEventListener("mouseup",select);doc.addEventListener("touchstart",touchStart,{passive:true});doc.addEventListener("touchend",touchEnd,{passive:true});
-        documentCleanups.set(doc,()=>{doc.removeEventListener("keydown",key);doc.removeEventListener("click",click);doc.removeEventListener("mousemove",move);doc.removeEventListener("mouseleave",leave);doc.removeEventListener("mouseup",select);doc.removeEventListener("touchstart",touchStart);doc.removeEventListener("touchend",touchEnd)});
+        const key=(event:KeyboardEvent)=>{if(event.defaultPrevented||(event.target as Element)?.closest?.("a,button,input,textarea,select,[contenteditable=true]"))return;const forwarded=new KeyboardEvent("keydown",{key:event.key,code:event.code,ctrlKey:event.ctrlKey,metaKey:event.metaKey,shiftKey:event.shiftKey,cancelable:true});if(!window.dispatchEvent(forwarded))event.preventDefault();};doc.addEventListener("keydown",key);doc.addEventListener("click",click);doc.addEventListener("mousemove",move);doc.addEventListener("mouseleave",leave);doc.addEventListener("mouseup",mouseUp);doc.addEventListener("touchstart",touchStart,{passive:true});doc.addEventListener("touchend",touchEnd,{passive:true});
+        doc.addEventListener("mousedown",down,true);
+        documentCleanups.set(doc,()=>{selectionCommit.cancel();doc.removeEventListener("mousedown",down,true);doc.removeEventListener("keydown",key);doc.removeEventListener("click",click);doc.removeEventListener("mousemove",move);doc.removeEventListener("mouseleave",leave);doc.removeEventListener("mouseup",mouseUp);doc.removeEventListener("touchstart",touchStart);doc.removeEventListener("touchend",touchEnd)});
         activeDocumentCleanup=()=>{for(const cleanup of documentCleanups.values())cleanup();documentCleanups.clear()};
         addVisibleAnnotations(index);
       };
@@ -614,7 +634,7 @@ function FoliateEpubReader({source,sourceBlob,bookId,settings,initialLocation,an
       onApi({next:()=>{void safeNavigate("next")},prev:()=>{void safeNavigate("prev")},goTo:(locator:string)=>{references?.resumeReading();navigation=navigation.then(()=>cancelled?undefined:goTo(locator)).catch(reason=>console.warn("[Papery] jump failed",reason));},search});
     })().catch(reason=>{if(!cancelled){console.error("[Papery] EPUB init error:",reason);setError(reason instanceof Error?reason.message:"EPUB 分页器初始化失败");setStatus("error")}});
     return()=>{view?.renderer?.flushLocation?.();cancelled=true;references?.destroy();setReferenceController(previous=>previous===references?null:previous);initGuard.current=false;onApi(null);callbacksRef.current.onEdgeCue?.(null);activeDocumentCleanup?.();if(wheelPoller!==undefined)window.clearInterval(wheelPoller);if(onPaginatorLoad)try{view?.renderer?.removeEventListener?.("load",onPaginatorLoad)}catch{}if(hostWheel)host.current?.removeEventListener("wheel",hostWheel);if(searchCueTimer.current!==null)window.clearTimeout(searchCueTimer.current);try{view?.close?.();view?.book?.destroy?.();view?.remove?.()}catch{}if(viewRef.current===view)viewRef.current=null};
-  },[source,sourceBlob,bookId,onApi]);
+  },[source,sourceBlob,bookId,onApi,selectionCommit]);
 
   useEffect(()=>{const view=viewRef.current,element=host.current;if(!view||!element||status!=="ready")return;(settings.fontFamily==="lxgw"?getEpubFontBlobUrl():Promise.resolve(epubFontUrl)).then(fontUrl=>{applyFoliateLayout(view,element,settings,fontUrl);for(const item of view.renderer.getContents?.()||[])if(item.doc)void applyEpubDocumentFont(item.doc,settings)});let frame=0,lastWidth=element.clientWidth;const observer=new ResizeObserver(()=>{const width=element.clientWidth;if(Math.abs(width-lastWidth)<1)return;lastWidth=width;cancelAnimationFrame(frame);frame=requestAnimationFrame(()=>(settings.fontFamily==="lxgw"?getEpubFontBlobUrl():Promise.resolve(epubFontUrl)).then(fontUrl=>applyFoliateLayout(view,element,settings,fontUrl,false)))});observer.observe(element);return()=>{cancelAnimationFrame(frame);observer.disconnect()}},[settings,status]);
   useEffect(()=>{
@@ -643,7 +663,44 @@ function FoliateEpubReader({source,sourceBlob,bookId,settings,initialLocation,an
 type PdfRect={x:number;y:number;width:number;height:number};
 type PdfLocator={type:"pdf";page:number;offset?:number;rects?:PdfRect[]};
 
+function PdfReflowReader({data,toc,...props}:Props&{data:PdfReflowText;toc:TocItem[]}){
+  const {onApi,onLocation,onToc,onSelection,onAnnotation,annotations}=props;
+  const toText=useCallback((locator:string)=>{
+    const saved=parseLocator<PdfLocator&{textOffset?:number;textStart?:number;textEnd?:number;quote?:string}>(locator);
+    const index=Math.min(data.starts.length-1,Math.max(0,(saved?.page||1)-1));
+    const base=data.starts[index],length=data.lengths[index];
+    let start=base+Math.min(length,Math.max(0,saved?.textOffset??saved?.textStart??Math.floor((saved?.offset||0)*length)));
+    const match=saved?.quote?resolvePdfQuote(data.text.slice(base,base+length),saved.quote,start-base):null;
+    if(match)start=base+match.start;
+    return JSON.stringify({...saved,type:"txt",offset:start,start:saved?.quote?start:undefined,end:saved?.quote?(match?base+match.end:base+(saved.textEnd??(start-base+saved.quote.length))):undefined,quote:match?data.text.slice(base+match.start,base+match.end):saved?.quote});
+  },[data]);
+  const toPdf=useCallback((locator:string)=>{
+    const saved=parseLocator<PortableTextAnchor>(locator)||{},start=saved.offset??saved.start??0,page=pdfReflowPage(data,start),base=data.starts[page-1];
+    return JSON.stringify({...saved,type:"pdf",page,offset:(start-base)/Math.max(1,data.lengths[page-1]),textOffset:start-base,textStart:saved.start===undefined?undefined:saved.start-base,textEnd:saved.end===undefined?undefined:saved.end-base});
+  },[data]);
+  const initial=useMemo(()=>toText(props.initialLocation||"{}"),[props.initialLocation,toText]);
+  const marks=useMemo(()=>annotations.flatMap(note=>{
+    const saved=parseLocator<PdfLocator&{textStart?:number}>(note.locator);if(!note.quote)return[{...note,locator:toText(note.locator)}];
+    const base=data.starts[(saved?.page||1)-1]||0,length=data.lengths[(saved?.page||1)-1]||0;
+    const match=resolvePdfQuote(data.text.slice(base,base+length),note.quote,saved?.textStart??Math.floor((saved?.offset||0)*length));if(!match)return[];
+    return[{...note,locator:JSON.stringify({type:"txt",start:base+match.start,end:base+match.end})}];
+  }),[annotations,toText,data]);
+  const handleApi=useCallback((api:ReaderApi|null)=>onApi(api?{
+    next:api.next,prev:api.prev,goTo:locator=>api.goTo(toText(locator)),search:async query=>(await api.search(query)).map(result=>({...result,locator:toPdf(result.locator),page:pdfReflowPage(data,parseLocator<PortableTextAnchor>(result.locator)?.offset||0),label:`第 ${pdfReflowPage(data,parseLocator<PortableTextAnchor>(result.locator)?.offset||0)} 页`}))
+  }:null),[onApi,toText,toPdf,data]);
+  const handleLocation=useCallback((location:ReaderLocation)=>{
+    const locator=toPdf(location.locator),saved=parseLocator<PdfLocator>(locator)!;
+    const chapterIndex=Math.max(0,toc.findLastIndex(item=>(item.page||1)<=saved.page));
+    onLocation({...location,locator,page:saved.page,totalPages:data.starts.length,chapterTitle:toc[chapterIndex]?.label||`第 ${saved.page} 页`,chapterIndex,chapterCount:toc.length});
+  },[onLocation,toPdf,data,toc]);
+  const handleToc=useCallback(()=>onToc(toc),[onToc,toc]);
+  const handleSelection=useCallback((selection:ReaderSelection)=>onSelection({...selection,locator:toPdf(selection.locator)}),[onSelection,toPdf]);
+  const handleAnnotation=useCallback((note:ReaderAnnotation)=>onAnnotation?.(annotations.find(original=>original.id===note.id)||note),[onAnnotation,annotations]);
+  return <TxtReader {...props} plainTextHeadings format="TXT" bookId={`${props.bookId}:pdf-text`} initialLocation={initial} annotations={marks} onApi={handleApi} onLocation={handleLocation} onToc={handleToc} onSelection={handleSelection} onAnnotation={handleAnnotation}/>;
+}
+
 const PdfPage=memo(function PdfPage({pdf,pageNumber,annotations,onSelection,onAnnotation,onRendered,scaleHint,zoom,pageColor,paperTexture}:any){
+  const selectionCommit=useSelectionCommitGuard();
   const canvas=useRef<HTMLCanvasElement>(null);
   const textLayer=useRef<HTMLDivElement>(null);
   const wrap=useRef<HTMLDivElement>(null);
@@ -687,13 +744,13 @@ const PdfPage=memo(function PdfPage({pdf,pageNumber,annotations,onSelection,onAn
     onSelection({quote:selection.toString().trim(),locator:JSON.stringify({type:"pdf",page:pageNumber,rects}),rect:{x:rect.left,y:rect.top,width:rect.width,height:rect.height}});
     selection.removeAllRanges();
   };
-  return <div ref={wrap} className="pdfPage" data-pdf-page={pageNumber} style={{width:size.width,height:size.height,background:pageColor,backgroundImage:paperBackground(paperTexture)}} onMouseUp={select} onTouchEnd={select}>
+  return <div ref={wrap} className="pdfPage" data-pdf-page={pageNumber} style={{width:size.width,height:size.height,background:pageColor,backgroundImage:paperBackground(paperTexture)}} onMouseUp={event=>selectionCommit.up(event,select)} onTouchEnd={event=>{if(!event.touches.length)select()}}>
     <canvas ref={canvas}/><div ref={textLayer} className="pdfTextLayer"/>
     {pageMarks.map(({annotation,rect}:any,index:number)=><button type="button" aria-label="编辑笔记" onClick={event=>{event.stopPropagation();onAnnotation?.(annotation)}} onPointerDown={event=>event.stopPropagation()} key={`${annotation.id}-${index}`} className={`pdfAnnotation ${annotation.style}`} style={{left:`${rect.x*100}%`,top:`${rect.y*100}%`,width:`${rect.width*100}%`,height:`${rect.height*100}%`,"--mark-color":annotationColor(annotation.color),"--mark-paint":annotationPaint(annotation.color,annotation.style)} as React.CSSProperties}/>)}
   </div>;
 });
 
-function PdfReader({source,bookId,settings,initialLocation,annotations,onApi,onLocation,onToc,onSelection,onAnnotation}:Props){
+function PdfReader({source,sourceBlob,bookId,settings,initialLocation,annotations,onApi,onLocation,onToc,onSelection,onAnnotation}:Props){
   const host=useRef<HTMLDivElement>(null);
   const pinch=useRef(0);
   const drag=useRef<{x:number;y:number;left:number;top:number;moved:boolean}|null>(null);
@@ -721,9 +778,19 @@ function PdfReader({source,bookId,settings,initialLocation,annotations,onApi,onL
   const [renderRadius,setRenderRadius]=useState(0);
   const [error,setError]=useState("");
   const textCache=useRef(new Map<number,string>());
+  const [reflow,setReflow]=useState<PdfReflowText|null>(null);
+  const [reflowError,setReflowError]=useState("");
+  const mode=settings.pdfMode||"original";
+  const latestLocator=useRef(initialLocation);
+  const previousMode=useRef(mode);
+  const [modeLocation,setModeLocation]=useState(initialLocation);
+  useLayoutEffect(()=>{if(previousMode.current!==mode){setModeLocation(latestLocator.current);restoring.current=true;previousMode.current=mode}},[mode]);
+  const reflowBlob=useMemo(()=>reflow?.readable?new Blob([reflow.text],{type:"text/plain;charset=utf-8"}):undefined,[reflow]);
+  const handleReflowLocation=useCallback((location:ReaderLocation)=>{latestLocator.current=location.locator;onLocation(location)},[onLocation]);
+  useEffect(()=>{if(!pdf||mode!=="text"||reflow)return;let cancelled=false;(async()=>{const pages:string[]=[];for(let number=1;number<=pdf.numPages;number++){const p=await pdf.getPage(number);const content=await p.getTextContent();if(cancelled)return;pages.push(pdfPageText(content.items));if(number%8===0)await new Promise(resolve=>setTimeout(resolve,0));}if(!cancelled)setReflow(buildPdfReflow(pages));})().catch(reason=>{if(!cancelled)setReflowError(reason instanceof Error?reason.message:"文字提取失败")});return()=>{cancelled=true}},[pdf,mode,reflow]);
   const handlePageRendered=useCallback(()=>setFirstPageReady(true),[]);
-  useEffect(()=>{const element=host.current;if(!element||!pdf)return;const update=()=>{setHostWidth(Math.max(320,element.clientWidth));setHostHeight(Math.max(320,element.clientHeight));setLayoutReady(true)};const observer=new ResizeObserver(update);observer.observe(element);update();return()=>observer.disconnect()},[pdf]);
-  useEffect(()=>{let doc:any,cancelled=false,timer=0;(async()=>{const [pdfjs,buffer]=await Promise.all([loadPdfJs(),readSource(source)]);pdfjs.GlobalWorkerOptions.workerSrc="/vendor/pdf.worker.min.mjs";doc=await pdfjs.getDocument({data:buffer.slice(0)}).promise;if(cancelled){await doc.destroy();return;}const fingerprint=await fingerprintBuffer(buffer).catch(()=>"");const cached=await loadSetting<{fingerprint?:string;sourceBytes?:number;pageRatios?:number[]}>(`analysis:${bookId}`).catch(()=>null);const valid=Boolean(fingerprint&&cached&&cached.fingerprint===fingerprint&&cached.sourceBytes===buffer.byteLength&&Array.isArray(cached.pageRatios)&&cached.pageRatios.length===doc.numPages&&cached.pageRatios.every(value=>Number.isFinite(value)&&value>0));const ratios:number[]=valid?cached!.pageRatios!:[];for(let start=1;!valid&&start<=doc.numPages;start+=12){if(cancelled){await doc.destroy();return;}ratios.push(...await Promise.all(Array.from({length:Math.min(12,doc.numPages-start+1)},async(_,i)=>{const p=await doc.getPage(start+i),v=p.getViewport({scale:1});return v.height/v.width})));}if(cancelled)return;setPageRatios(ratios);setPage(Math.min(initialPage,doc.numPages));setPdf(doc);void saveSetting(`analysis:${bookId}`,{...cached,totalPages:doc.numPages,analyzedAt:Date.now(),fingerprint,sourceBytes:buffer.byteLength,pageRatios:ratios});const first=await doc.getPage(1),viewport=first.getViewport({scale:1});setPageRatio(viewport.height/viewport.width);timer=window.setTimeout(()=>setRenderRadius(1),160);const outline=await doc.getOutline();const result:TocItem[]=[];const walk=async(items:any[],level=0)=>{for(const item of items||[]){let pageNumber=1;try{const dest=typeof item.dest==="string"?await doc.getDestination(item.dest):item.dest;if(dest?.[0])pageNumber=await doc.getPageIndex(dest[0])+1}catch{}result.push({id:`pdf-${result.length}`,label:item.title||`第 ${pageNumber} 页`,level,page:pageNumber,locator:JSON.stringify({type:"pdf",page:pageNumber})});await walk(item.items||[],level+1)}};await walk(outline||[]);if(!result.length){for(let value=1;value<=doc.numPages;value++)result.push({id:`pdf-${value}`,label:`第 ${value} 页`,level:0,page:value,locator:JSON.stringify({type:"pdf",page:value})})}setToc(result);onToc(result)})().catch(reason=>{if(!cancelled)setError(reason instanceof Error?reason.message:"PDF 解析失败")});return()=>{cancelled=true;clearTimeout(timer);doc?.destroy?.()}},[source,bookId,onToc]);
+  useEffect(()=>{const element=host.current;if(!element||!pdf)return;const update=()=>{setHostWidth(Math.max(320,element.clientWidth));setHostHeight(Math.max(320,element.clientHeight));setLayoutReady(true)};const observer=new ResizeObserver(update);observer.observe(element);update();return()=>observer.disconnect()},[pdf,mode]);
+  useEffect(()=>{let doc:any,cancelled=false,timer=0;(async()=>{const [pdfjs,buffer]=await Promise.all([loadPdfJs(),readSource(source,sourceBlob)]);pdfjs.GlobalWorkerOptions.workerSrc="/vendor/pdf.worker.min.mjs";doc=await pdfjs.getDocument(pdfDocumentOptions(buffer.slice(0))).promise;if(cancelled){await doc.destroy();return;}const fingerprint=await fingerprintBuffer(buffer).catch(()=>"");const cached=await loadSetting<{fingerprint?:string;sourceBytes?:number;pageRatios?:number[]}>(`analysis:${bookId}`).catch(()=>null);const valid=Boolean(fingerprint&&cached&&cached.fingerprint===fingerprint&&cached.sourceBytes===buffer.byteLength&&Array.isArray(cached.pageRatios)&&cached.pageRatios.length===doc.numPages&&cached.pageRatios.every(value=>Number.isFinite(value)&&value>0));const ratios:number[]=valid?cached!.pageRatios!:[];for(let start=1;!valid&&start<=doc.numPages;start+=12){if(cancelled){await doc.destroy();return;}ratios.push(...await Promise.all(Array.from({length:Math.min(12,doc.numPages-start+1)},async(_,i)=>{const p=await doc.getPage(start+i),v=p.getViewport({scale:1});return v.height/v.width})));}if(cancelled)return;setPageRatios(ratios);setPage(Math.min(initialPage,doc.numPages));setPdf(doc);void saveSetting(`analysis:${bookId}`,{...cached,totalPages:doc.numPages,analyzedAt:Date.now(),fingerprint,sourceBytes:buffer.byteLength,pageRatios:ratios});const first=await doc.getPage(1),viewport=first.getViewport({scale:1});setPageRatio(viewport.height/viewport.width);timer=window.setTimeout(()=>setRenderRadius(1),160);const outline=await doc.getOutline();const result:TocItem[]=[];const walk=async(items:any[],level=0)=>{for(const item of items||[]){let pageNumber=1;try{const dest=typeof item.dest==="string"?await doc.getDestination(item.dest):item.dest;if(dest?.[0])pageNumber=await doc.getPageIndex(dest[0])+1}catch{}result.push({id:`pdf-${result.length}`,label:item.title||`第 ${pageNumber} 页`,level,page:pageNumber,locator:JSON.stringify({type:"pdf",page:pageNumber})});await walk(item.items||[],level+1)}};await walk(outline||[]);if(!result.length){for(let value=1;value<=doc.numPages;value++)result.push({id:`pdf-${value}`,label:`第 ${value} 页`,level:0,page:value,locator:JSON.stringify({type:"pdf",page:value})})}setToc(result);onToc(result)})().catch(reason=>{if(!cancelled)setError(reason instanceof Error?reason.message:"PDF 解析失败")});return()=>{cancelled=true;clearTimeout(timer);doc?.destroy?.()}},[source,sourceBlob,bookId,onToc,initialPage]);
   const widthHint=Math.max(260,Math.min(1200,hostWidth));
   const pageHint=Math.max(240,Math.min(widthHint,hostHeight/pageRatio));
   const scaleHint=fitMode==="page"?pageHint:widthHint;
@@ -731,23 +798,29 @@ function PdfReader({source,bookId,settings,initialLocation,annotations,onApi,onL
   const slotHeight=scaleHint*zoom*(pageRatios[page-1]||pageRatio)+24;
   const pageWidth=scaleHint*zoom;
   const trackWidth=pageWidth>hostWidth?pageWidth+32:hostWidth;
-  useLayoutEffect(()=>{if(!pdf||!layoutReady||!restoring.current)return;const frame=requestAnimationFrame(()=>{const element=host.current;if(!element)return;const bounded=Math.min(initialPage,pdf.numPages);element.scrollTop=(offsets[bounded-1]||0)+pageOffset*(offsets[bounded]-offsets[bounded-1]);element.scrollLeft=Math.max(0,(trackWidth-element.clientWidth)/2);requestAnimationFrame(()=>{restoring.current=false;setPage(Math.min(initialPage,pdf.numPages))})});return()=>cancelAnimationFrame(frame)},[pdf,layoutReady,initialPage,slotHeight,trackWidth,offsets,pageOffset]);
+  useLayoutEffect(()=>{if(!pdf||mode!=="original"||!layoutReady||!restoring.current)return;const frame=requestAnimationFrame(()=>{const element=host.current;if(!element)return;const saved=parseLocator<PdfLocator>(modeLocation),bounded=Math.min(saved?.page||initialPage,pdf.numPages);element.scrollTop=(offsets[bounded-1]||0)+(saved?.offset??pageOffset)*(offsets[bounded]-offsets[bounded-1]);element.scrollLeft=Math.max(0,(trackWidth-element.clientWidth)/2);requestAnimationFrame(()=>{restoring.current=false;setPage(bounded)})});return()=>cancelAnimationFrame(frame)},[pdf,layoutReady,initialPage,slotHeight,trackWidth,offsets,pageOffset,mode,modeLocation]);
   const scrollToPage=useCallback((target:number,behavior:ScrollBehavior="instant")=>{scrollUpdates.current?.cancel();scrollSnapshot.current=null;const bounded=Math.min(pdf?.numPages||target,Math.max(1,target));pageRef.current=bounded;setPage(bounded);setPageOffset(0);requestAnimationFrame(()=>host.current?.scrollTo({top:offsets[bounded-1]||0,behavior}))},[pdf,offsets,scrollUpdates]);
   const goTo=useCallback((locator:string)=>{const target=parseLocator<PdfLocator>(locator);if(!target||!pdf)return;restoring.current=false;scrollToPage(target.page);const bounded=Math.min(pdf.numPages,Math.max(1,target.page)),fraction=Math.max(0,Math.min(.99,target.offset??((target.rects?.[0]?.y||0)-.15)));requestAnimationFrame(()=>{if(host.current)host.current.scrollTop=offsets[bounded-1]+fraction*(offsets[bounded]-offsets[bounded-1]);});},[scrollToPage,pdf,offsets]);
   const next=useCallback(()=>scrollToPage(pageRef.current+1),[scrollToPage]);
   const prev=useCallback(()=>scrollToPage(pageRef.current-1),[scrollToPage]);
   const search=useCallback(async(query:string):Promise<ReaderSearchResult[]>=>{const needle=query.trim().toLocaleLowerCase();if(!pdf||!needle)return[];const results:ReaderSearchResult[]=[];for(let start=1;start<=pdf.numPages&&results.length<100;start+=6){const numbers=Array.from({length:Math.min(6,pdf.numPages-start+1)},(_,index)=>start+index);const texts=await Promise.all(numbers.map(async pageNumber=>{const cached=textCache.current.get(pageNumber);if(cached!==undefined)return cached;const pdfPage=await pdf.getPage(pageNumber),content=await pdfPage.getTextContent();const value=content.items.map((item:any)=>item.str||"").join(" ");textCache.current.set(pageNumber,value);return value}));texts.forEach((value,index)=>{const lower=value.toLocaleLowerCase();let cursor=0;while(results.length<100){const found=lower.indexOf(needle,cursor);if(found<0)break;const pageNumber=numbers[index];results.push({id:`pdf-search-${pageNumber}-${found}`,label:`第 ${pageNumber} 页`,excerpt:value.slice(Math.max(0,found-34),Math.min(value.length,found+needle.length+52)).replace(/\s+/g," "),locator:JSON.stringify({type:"pdf",page:pageNumber}),page:pageNumber});cursor=found+Math.max(1,needle.length)}})}return results},[pdf]);
-  useEffect(()=>{onApi({next,prev,goTo,search});return()=>onApi(null)},[next,prev,goTo,search,onApi]);
-  const reportPdfLocation=useCallback((currentPage:number,offset:number)=>{if(!pdf)return;let chapterIndex=0;toc.forEach((item,index)=>{const loc=parseLocator<PdfLocator>(item.locator);if((loc?.page||1)<=currentPage)chapterIndex=index});onLocation({locator:JSON.stringify({type:"pdf",page:currentPage,offset}),progress:currentPage/pdf.numPages*100,page:currentPage,totalPages:pdf.numPages,chapterTitle:toc[chapterIndex]?.label||`第 ${currentPage} 页`,chapterIndex,chapterCount:toc.length})},[pdf,toc,onLocation]);
+  useEffect(()=>{if(mode!=="original")return;onApi({next,prev,goTo,search});return()=>onApi(null)},[next,prev,goTo,search,onApi,mode]);
+  const reportPdfLocation=useCallback((currentPage:number,offset:number)=>{if(!pdf||mode!=="original"||restoring.current)return;let chapterIndex=0;toc.forEach((item,index)=>{const loc=parseLocator<PdfLocator>(item.locator);if((loc?.page||1)<=currentPage)chapterIndex=index});latestLocator.current=JSON.stringify({type:"pdf",page:currentPage,offset});onLocation({locator:latestLocator.current,progress:currentPage/pdf.numPages*100,page:currentPage,totalPages:pdf.numPages,chapterTitle:toc[chapterIndex]?.label||`第 ${currentPage} 页`,chapterIndex,chapterCount:toc.length})},[pdf,toc,onLocation,mode]);
   useLayoutEffect(()=>{commitScroll.current=()=>{const value=scrollSnapshot.current;if(value){setPage(value.page);setPageOffset(value.offset);reportPdfLocation(value.page,value.offset)}}},[reportPdfLocation]);
   useEffect(()=>{const scheduler=createReadingScheduler(()=>commitScroll.current());scrollUpdates.current=scheduler;const flush=()=>scheduler.flush();window.addEventListener("pagehide",flush);window.addEventListener("blur",flush);document.addEventListener("visibilitychange",flush);return()=>{scheduler.flush();scheduler.cancel();scrollUpdates.current=null;window.removeEventListener("pagehide",flush);window.removeEventListener("blur",flush);document.removeEventListener("visibilitychange",flush)}},[]);
   useEffect(()=>reportPdfLocation(page,pageOffset),[page,pageOffset,reportPdfLocation]);
   if(error)return <div className="readerError"><strong>PDF 打开失败</strong><p>{error}</p></div>;
-  if(!pdf)return <div className="pdfReaderShell" style={{background:settings.pageColor}}><div className="epubLoadingMinimal"><span/></div></div>;
+  if(!pdf)return <div className="pdfReaderShell" style={{backgroundColor:settings.pageColor,backgroundImage:paperBackground(settings.paperTexture)}}><div className="epubLoadingMinimal"><span/></div></div>;
   const first=Math.max(1,page-renderRadius),last=Math.min(pdf.numPages,page+renderRadius),pages=Array.from({length:last-first+1},(_,index)=>first+index);
   const preserveView=(nextWidth:number,nextSlotHeight:number)=>{const element=host.current;if(!element)return;const horizontal=(element.scrollLeft+element.clientWidth/2)/Math.max(1,trackWidth),within=(element.scrollTop-offsets[pageRef.current-1])/Math.max(1,offsets[pageRef.current]-offsets[pageRef.current-1]);requestAnimationFrame(()=>requestAnimationFrame(()=>{const current=host.current;if(!current)return;current.scrollLeft=Math.max(0,horizontal*Math.max(current.clientWidth,nextWidth+32)-current.clientWidth/2);current.scrollTop=Math.max(0,(pdfPageOffsets(pageRatios,nextWidth)[pageRef.current-1]||0)+within*(nextWidth*(pageRatios[pageRef.current-1]||pageRatio)+24))}))};
   const changeZoom=(nextZoom:number)=>{const next=Math.min(4,Math.max(.6,Math.round(nextZoom*10)/10)),nextWidth=widthHint*next,nextSlot=nextWidth*pageRatio+24;preserveView(nextWidth,nextSlot);setFitMode("custom");setZoom(next)};
   const fit=(mode:"width"|"page")=>{const nextWidth=mode==="page"?pageHint:widthHint;preserveView(nextWidth,nextWidth*pageRatio+24);setFitMode(mode);setZoom(1)};
+  if(mode==="text"){
+    if(reflowError)return <div className="readerError"><strong>文字阅读暂不可用</strong><p>{reflowError}，请在阅读设置中切换原版页面。</p></div>;
+    if(reflow&&!reflow.readable)return <div className="readerError"><strong>此 PDF 没有可提取的文字</strong><p>扫描版请在阅读设置中切换原版页面。</p></div>;
+    if(!reflow||!reflowBlob)return <div className="readerLoading" role="status"><span/><p>正在准备文字阅读…</p></div>;
+    return <PdfReflowReader source={source} sourceBlob={reflowBlob} format="PDF" bookId={bookId} settings={settings} initialLocation={modeLocation} annotations={annotations} onApi={onApi} onToc={onToc} onSelection={onSelection} onAnnotation={onAnnotation} data={reflow} toc={toc} onLocation={handleReflowLocation}/>;
+  }
   return <div className="pdfReaderShell"><PdfTools zoom={zoom} fitMode={fitMode} onZoom={changeZoom} onFit={fit}/><div ref={host} className={`pdfHost pdfContinuous ${pageWidth>hostWidth?"zoomed canPan":""} ${panning?"panning":""}`}
     onScroll={event=>{if(restoring.current)return;const element=event.currentTarget,top=element.scrollTop,end=isScrollEnd(top,element.clientHeight,element.scrollHeight),next=end?pdf.numPages:pageAtOffset(offsets,top),changed=next!==pageRef.current;pageRef.current=next;scrollSnapshot.current={page:next,offset:Math.max(0,Math.min(.99,(top-offsets[next-1])/Math.max(1,offsets[next]-offsets[next-1])))};scrollUpdates.current?.request(changed||end)}}
     onWheel={event=>{if(event.ctrlKey||event.metaKey){event.preventDefault();changeZoom(zoom-event.deltaY*.002)}}}
@@ -758,7 +831,7 @@ function PdfReader({source,bookId,settings,initialLocation,annotations,onApi,onL
     onPointerMove={event=>{const start=drag.current;if(!start)return;const dx=event.clientX-start.x,dy=event.clientY-start.y;if(Math.abs(dx)+Math.abs(dy)>4)start.moved=true;event.currentTarget.scrollLeft=start.left-dx;event.currentTarget.scrollTop=start.top-dy}}
     onClickCapture={event=>{if(Date.now()<suppressClick.current)event.stopPropagation()}}
     onPointerUp={event=>{if(!drag.current)return;if(drag.current.moved)suppressClick.current=Date.now()+500;event.currentTarget.releasePointerCapture(event.pointerId);drag.current=null;setPanning(false)}}
-    onPointerCancel={()=>{drag.current=null;setPanning(false)}} style={{background:settings.pageColor}}>
+    onPointerCancel={()=>{drag.current=null;setPanning(false)}} style={{backgroundColor:settings.pageColor,backgroundImage:paperBackground(settings.paperTexture)}}>
     <div className="pdfVirtualTrack" style={{width:trackWidth}}>
       <div style={{height:offsets[first-1]||0}}/>
       {pages.map(pageNumber=><div className="pdfSlot" style={{height:offsets[pageNumber]-offsets[pageNumber-1]}} key={pageNumber}><PdfPage pdf={pdf} pageNumber={pageNumber} annotations={annotations} onSelection={onSelection} onAnnotation={onAnnotation} onRendered={handlePageRendered} scaleHint={scaleHint} zoom={zoom} pageColor={settings.pageColor} paperTexture={settings.paperTexture}/></div>)}

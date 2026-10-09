@@ -3,7 +3,7 @@
 </a>
 
 <p align="center"><strong>一个安静、本地优先的阅读空间。</strong><br>Windows · Android &nbsp; / &nbsp; EPUB · PDF · TXT</p>
-<p align="center"><a href="https://github.com/Mu-Wan/papery-epub-reader/releases/tag/papery-v0.1.43">下载 0.1.43</a> &nbsp; · &nbsp; <a href="https://mu-wan.github.io/papery-epub-reader/showcase/">项目主页</a> &nbsp; · &nbsp; <a href="docs/Google-Drive-接入.md">同步配置</a> &nbsp; · &nbsp; <a href="https://github.com/Mu-Wan/papery-epub-reader/issues">反馈问题</a></p>
+<p align="center"><a href="https://github.com/Mu-Wan/papery-epub-reader/releases/tag/papery-v0.1.45">下载 0.1.45</a> &nbsp; · &nbsp; <a href="https://mu-wan.github.io/papery-epub-reader/showcase/">项目主页</a> &nbsp; · &nbsp; <a href="docs/Google-Drive-接入.md">同步配置</a> &nbsp; · &nbsp; <a href="https://github.com/Mu-Wan/papery-epub-reader/issues">反馈问题</a></p>
 
 ## 从一本书开始
 
@@ -11,12 +11,14 @@ Papery 把书籍、阅读位置和随手写下的想法保存在本机。导入�
 
 | 阅读 | 整理 | 回看 |
 | --- | --- | --- |
-| EPUB、TXT 调整字体、字号、行距与主题 | 真实封面、搜索、分类与分组 | 搜索笔记，回到原文 |
+| EPUB、TXT 与 PDF 文字阅读调整字体、字号、行距与主题 | 真实封面、搜索、分类与分组 | 搜索笔记，回到原文 |
 | 分页或连续滚动，PDF 缩放与页码定位 | 继续阅读、划线、书签与笔记 | 阅读时长、每日记录与格式分布 |
 
 ## 阅读与想法，在同一处
 
 正文里的标注可以直接编辑、删除。笔记页可按时间、书籍、作者或标注类型分组，也可搜索书名、作者与章节。书架支持作者、书名首字母、出版年份和导入年份分组，并可分别设置组内排序。PDF 的左侧浮动工具可收起，把空间留给页面。
+
+PDF 可在原版页面与文字阅读之间切换。带文字层的正文随窗口宽度自然换行，可调整排版并保留原 PDF 页码、搜索和笔记定位；扫描版与复杂图表使用原版页面。默认纸张为羊皮色＋细纹纸。
 
 ![阅读界面与笔记界面展示](site/assets/reading-showcase.png)
 
@@ -26,16 +28,16 @@ Papery 把书籍、阅读位置和随手写下的想法保存在本机。导入�
 
 ![阅读数据界面展示](site/assets/data-showcase.png)
 
-<sub>展示图来自 0.1.28 演示界面，使用原创演示书籍与演示数据，安装包不附带这些内容。最新功能见 0.1.43 更新说明；窄屏画面为响应式布局预览。</sub>
+<sub>展示图来自 0.1.28 演示界面，使用原创演示书籍与演示数据，安装包不附带这些内容。最新功能见 0.1.45 更新说明；窄屏画面为响应式布局预览。</sub>
 
 ## 下载与安装
 
 | 平台 | 安装文件 | 环境 |
 | --- | --- | --- |
-| Windows | [下载 EXE 安装包](https://github.com/Mu-Wan/papery-epub-reader/releases/download/papery-v0.1.43/Papery-Reader-0.1.43-Windows-x64-Setup.exe) | x64，使用 WebView2 |
-| Android | [下载 APK 安装包](https://github.com/Mu-Wan/papery-epub-reader/releases/download/papery-v0.1.43/Papery-Reader-0.1.43-Android-arm64.apk) | Android 7.0+，arm64 |
+| Windows | [下载 EXE 安装包](https://github.com/Mu-Wan/papery-epub-reader/releases/download/papery-v0.1.45/Papery-Reader-0.1.45-Windows-x64-Setup.exe) | x64，使用 WebView2 |
+| Android | [下载 APK 安装包](https://github.com/Mu-Wan/papery-epub-reader/releases/download/papery-v0.1.45/Papery-Reader-0.1.45-Android-arm64.apk) | Android 7.0+，arm64 |
 
-Windows 安装向导使用中文，程序名称为 **Papery Reader**。Android 更新沿用原签名。安装文件与 [SHA256 校验值](https://github.com/Mu-Wan/papery-epub-reader/releases/download/papery-v0.1.43/SHA256SUMS.txt) 均在 [0.1.43 发布页](https://github.com/Mu-Wan/papery-epub-reader/releases/tag/papery-v0.1.43) 提供。Windows 7 的实际设备兼容性尚未验证。
+Windows 安装向导使用中文，程序名称为 **Papery Reader**。Android 更新沿用原签名。安装文件与 [SHA256 校验值](https://github.com/Mu-Wan/papery-epub-reader/releases/download/papery-v0.1.45/SHA256SUMS.txt) 均在 [0.1.45 发布页](https://github.com/Mu-Wan/papery-epub-reader/releases/tag/papery-v0.1.45) 提供。Windows 7 的实际设备兼容性尚未验证。
 
 首次打开是空书库，默认昵称为“Papery 读者”，并配有默认头像。点击顶部“导入书籍”添加第一本书；点击侧栏底部**整条用户横栏**，即可修改个人资料或进入云同步。升级不会主动清空已有本地数据。
 
@@ -50,7 +52,7 @@ Windows 安装向导使用中文，程序名称为 **Papery Reader**。Android �
 
 分类可通过悬停编辑按钮、双击名称或 F2 改名；手机端直接显示编辑和删除按钮。“未分类”位于末尾，分类不提供拖动排序。Windows 与 Android 共用版本 1 备份格式，迁移书籍原文件、封面、排版、个人资料、笔记与阅读记录；备份不包含 Google 连接配置或授权令牌。
 
-[0.1.43 更新说明](docs/releases/0.1.43.md) · [备份格式与兼容性约定](docs/backup-format.md)
+[0.1.45 更新说明](docs/releases/0.1.45.md) · [备份格式与兼容性约定](docs/backup-format.md)
 
 ## 可选的 Google Drive 同步
 
