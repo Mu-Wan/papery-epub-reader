@@ -4,6 +4,7 @@ export type ReaderSpread = "single" | "double";
 export type AnnotationStyle = "highlight" | "underline" | "bookmark";
 
 export type ReaderSettings = {
+  followTheme?: boolean;
   pdfMode?: "original" | "text";
   fontFamily: "system" | "lxgw" | "serif" | "sans";
   fontSize: number;
@@ -87,6 +88,10 @@ export type ReaderApi = {
 };
 
 export type AppPreferences = {
+  themePreset?: "sea" | "grove" | "ember" | "iris" | "custom";
+  customAccent?: string;
+  canvasPreset?: "neutral" | "mist" | "sage" | "sand" | "lilac" | "custom";
+  customCanvas?: string;
   appTheme: "light" | "dark" | "system";
   density: "comfortable" | "compact";
   startPage: "library" | "last-read";
@@ -96,7 +101,9 @@ export type AppPreferences = {
 };
 
 export const defaultAppPreferences: AppPreferences = {
-  appTheme: "light",
+  appTheme: "system",
+  themePreset: "sea",
+  canvasPreset: "neutral",
   density: "comfortable",
   startPage: "library",
   autoSync: false,

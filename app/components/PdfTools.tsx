@@ -6,7 +6,7 @@ export function PdfTools({ zoom, fitMode, onZoom, onFit }: {
   zoom: number; fitMode: "width" | "page" | "custom";
   onZoom: (zoom: number) => void; onFit: (mode: "width" | "page") => void;
 }) {
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapsed, setCollapsed] = useState(true);
   return <div className="pdfToolDock" data-collapsed={collapsed} onClick={event => event.stopPropagation()}>
     <button className="pdfDockToggle" aria-label={collapsed ? "展开 PDF 工具" : "收起 PDF 工具"}
       aria-expanded={!collapsed} onClick={() => setCollapsed(value => !value)}>

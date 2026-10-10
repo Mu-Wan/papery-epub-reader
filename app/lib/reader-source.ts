@@ -1,4 +1,5 @@
 import { loadPdfJs } from "./pdf-loader";
+import { readBlobBytes } from "./blob-bytes";
 import { releaseReaderResources } from "./reader-resources.mjs";
 
 const buffers = new Map<string, { promise: Promise<ArrayBuffer>; bytes: number }>();
@@ -7,7 +8,7 @@ const maxBytes = 32 * 1024 * 1024, maxSources = 2;
 
 export function readReaderSource(source: string, sourceBlob?: Blob): Promise<ArrayBuffer> {
   // Read the persisted bytes directly, independently of WebView blob-URL lifetime.
-  if (sourceBlob) return sourceBlob.arrayBuffer().then(buffer => {
+  if (sourceBlob) return readBlobBytes(sourceBlob).then(buffer => {
     if (!buffer.byteLength) throw new Error("书籍文件为空，请重新导入原文件");
     return buffer;
   });

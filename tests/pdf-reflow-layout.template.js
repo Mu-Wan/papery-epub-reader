@@ -1,6 +1,6 @@
 async page=>{
  const results=[];const check=(name,value,details)=>{results.push({name,pass:!!value,details});if(!value)throw new Error(JSON.stringify(results));};
- await page.waitForSelector('.readerPage');
+ await page.goto('http://127.0.0.1:3188/');await page.waitForSelector('.readerPage');
  await page.setViewportSize({width:2560,height:1600});
  const defaults=await page.evaluate(()=>{const root=document.querySelector('.readerPage');return{color:getComputedStyle(root).backgroundColor,texture:getComputedStyle(root).backgroundImage};});
  check('Default paper is parchment with fine texture',defaults.color==='rgb(240, 230, 210)'&&defaults.texture.includes('fine.png'),defaults);

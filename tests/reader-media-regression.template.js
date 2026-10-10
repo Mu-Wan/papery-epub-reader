@@ -8,7 +8,7 @@ async page=>{
  const afterTransfer=await page.evaluate(()=>window.fixture.restoreBytes());check('Persisted PDF reopens after a revoked URL and transferred buffer',afterTransfer===persisted,afterTransfer);
  for(let i=0;i<4;i++){await page.evaluate(()=>window.fixture.close());await page.waitForTimeout(50);await page.evaluate(()=>window.fixture.reopen());await waitPdf();}
  check('PDF reopens four times without zero-byte failure',!await page.locator('.readerError').count());
- await page.getByRole('button',{name:'缩小 PDF',exact:true}).click({clickCount:4});await page.waitForTimeout(400);
+ await page.getByRole('button',{name:'展开 PDF 工具',exact:true}).click();await page.getByRole('button',{name:'缩小 PDF',exact:true}).click({clickCount:4});await page.waitForTimeout(400);
  const paper=await page.evaluate(()=>{const host=document.querySelector('.pdfHost'),shell=document.querySelector('.pdfReaderShell');return{background:getComputedStyle(host).backgroundImage,width:shell.clientWidth,screen:innerWidth,zoom:document.querySelector('.zoomValue').textContent};});
  check('PDF at 60% retains paper across the full reading width',paper.background.includes('fine.png')&&paper.width>=paper.screen*.9&&paper.zoom==='60%',paper);
  const shadows=await page.evaluate(()=>({page:getComputedStyle(document.querySelector('.pdfPage')).boxShadow,canvas:getComputedStyle(document.querySelector('.pdfPage canvas')).boxShadow}));

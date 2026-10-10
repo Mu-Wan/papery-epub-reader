@@ -3,7 +3,7 @@ import { pinyin } from "pinyin-pro";
 export type ShelfGrouping = "none" | "author" | "title" | "published" | "imported";
 export type ShelfSort = "recent" | "title" | "author" | "imported" | "published";
 export type ShelfView = { groupBy: ShelfGrouping; sortBy: ShelfSort };
-export const defaultShelfView: ShelfView = { groupBy: "none", sortBy: "recent" };
+export const defaultShelfView: ShelfView = { groupBy: "none", sortBy: "author" };
 export const shelfGroupOptions = [
   { value: "none", label: "不分组" }, { value: "author", label: "按作者分组" },
   { value: "title", label: "按书名 A–Z" }, { value: "published", label: "按出版年份" }, { value: "imported", label: "按导入年份" },
@@ -14,7 +14,7 @@ export const shelfSortOptions = [
 ];
 export function normalizeShelfView(value?: Partial<ShelfView> | null): ShelfView {
   return { groupBy: shelfGroupOptions.some(option => option.value === value?.groupBy) ? value!.groupBy! : "none",
-    sortBy: shelfSortOptions.some(option => option.value === value?.sortBy) ? value!.sortBy! : "recent" };
+    sortBy: shelfSortOptions.some(option => option.value === value?.sortBy) ? value!.sortBy! : "author" };
 }
 type GroupableBook = { id: string; title: string; author: string; progress: number; currentLocation?: string; lastReadAt?: number; importedAt?: number; publicationYear?: number };
 const collator = new Intl.Collator("zh-CN-u-co-pinyin", { numeric: true, sensitivity: "base" });
@@ -69,4 +69,8 @@ export function groupLibraryBooks<T extends GroupableBook>(books: T[], view: She
     if (unknown(a.label) !== unknown(b.label)) return unknown(a.label) ? 1 : -1;
     return view.groupBy === "published" || view.groupBy === "imported" ? compareBookText(b.label, a.label) : compareBookText(a.label, b.label);
   });
+}
+
+export function orderedShelfBooks<T extends GroupableBook>(books:T[],sortBy:ShelfSort,recency=new Map<string,number>()){
+  return groupLibraryBooks(books,{groupBy:"none",sortBy},recency)[0]?.books||[];
 }

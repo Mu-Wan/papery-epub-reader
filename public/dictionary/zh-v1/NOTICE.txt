@@ -1,0 +1,19 @@
+Chinese offline dictionary
+
+Copyright: Chinese Wiktionary contributors. Data extracted by Kaikki / Wiktextract.
+Data license: Creative Commons Attribution-ShareAlike 4.0 International (CC BY-SA 4.0).
+License: https://creativecommons.org/licenses/by-sa/4.0/
+Source: https://zh.wiktionary.org/
+Extraction: https://kaikki.org/zhwiktionary/
+Snapshot: zhwiktionary 2026-10-01; Kaikki extraction 2026-10-02.
+Attribution and revision history for each entry:
+https://zh.wiktionary.org/wiki/<sourceWord>
+https://zh.wiktionary.org/w/index.php?title=<sourceWord>&action=history
+Each shard record retains the original entry URL as its first value. Entry URLs use percent-encoded source words for attribution.
+
+Changes: select Chinese headwords (1-8 Han characters); convert headwords and definitions to Simplified Chinese with OpenCC 1.4.2 (t2s); merge duplicate simplified headwords; remove traditional lookup aliases; retain up to four Chinese definitions per headword; omit examples, quotations, media and pronunciation; remove repeated whitespace; resolve form redirects to canonical definitions; discard missing-definition and template placeholders; partition into shards. Original entry URLs are retained for attribution. Dictionary data and adaptations are supplied under CC BY-SA 4.0. Application code has its own license. No endorsement by Wiktionary, Wikimedia, Kaikki, Wiktextract or OpenCC is implied.
+
+Build dependency: OpenCC 1.4.2 (https://github.com/BYVoid/OpenCC), licensed under Apache-2.0; used only during dictionary preparation, not included as a runtime component.
+Rebuild: python -m pip install -r scripts/dictionary-requirements.txt
+Then: python scripts/build-offline-dictionary.py --source <downloaded-jsonl>
+The manifest records the original download URL and SHA-256.

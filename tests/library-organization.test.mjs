@@ -37,6 +37,7 @@ globalThis.indexedDB = indexedDB;
 globalThis.IDBKeyRange = IDBKeyRange;
 globalThis.DOMParser = new JSDOM("").window.DOMParser;
 globalThis.FileReader = class {
+  readAsArrayBuffer(blob) { void Blob.prototype.arrayBuffer.call(blob).then(buffer => { this.result=buffer; this.onload?.(); }).catch(error=>{this.error=error;this.onerror?.();}); }
   readAsDataURL(blob) { void blob.arrayBuffer().then(buffer => { this.result = `data:${blob.type};base64,${Buffer.from(buffer).toString("base64")}`; this.onload?.(); }).catch(error => { this.error = error; this.onerror?.(); }); }
 };
 const library = loadTs("../app/lib/local-library.ts");
@@ -161,7 +162,29 @@ test("Shelf markup presents real search results immediately and keeps the only r
   const noop = () => {};
   const props = { books: [books[0]], allBooks: books, recentBooks: [books[0]], selectedBook: books[0], loading: false, search: "三体", setSearch: noop, category: "全部", categories: ["未分类"], setCategory: noop, onImport: noop, onRead: noop, onReadIntent: noop, onMenu: noop, bookMenu: null, setBookMenu: noop, onMove: noop, onDelete: noop, onEdit: noop, shelfView: { groupBy: "none", sortBy: "title" }, onShelfView: noop, recency: new Map() };
   const html = renderToStaticMarkup(React.createElement(LibraryView, props));
-  assert.match(html, /搜索结果/); assert.ok(!html.includes('class="libraryLead"')); assert.equal((html.match(/class="bookCard"/g) || []).length, 1);
+  assert.match(html, /搜索结果/); assert.ok(!html.includes('class="libraryLead"')); assert.equal((html.match(/class="spineBook"/g) || []).length, 1);
   const home = renderToStaticMarkup(React.createElement(LibraryView, { ...props, search: "" }));
   assert.match(home, /最近阅读/); assert.ok(!home.includes("阅读过的书籍会出现在这里"));
+});
+
+test("PDF/TXT owned bytes survive temporary Blob failures, backup restore and legacy records", async () => {
+  const content="PDF/TXT independent content 清晨",blob=new Blob([content],{type:"text/plain"});
+  blob.arrayBuffer=async()=>new ArrayBuffer(0);
+  await library.saveLocalBook({id:"owned",title:"清晨",author:"林青",format:"TXT",category:"未分类",progress:0,updatedAt:100,blob});
+  const db=await new Promise(resolve=>{const r=indexedDB.open("papery-library",3);r.onsuccess=()=>resolve(r.result);});
+  const raw=await new Promise(resolve=>{const r=db.transaction("books").objectStore("books").get("owned");r.onsuccess=()=>resolve(r.result);});
+  assert.ok(raw.fileBytes instanceof ArrayBuffer);assert.equal(raw.blob,undefined);assert.equal(new TextDecoder().decode(raw.fileBytes),content);
+  await library.saveBookProgress("owned",42,"original-anchor");
+  const appearance={appTheme:"system",themePreset:"grove",canvasPreset:"custom",customCanvas:"#EDE7DA",customAccent:"#4E8FC3"};await library.saveSetting("app",appearance);
+  const backup=await library.exportLibraryBackup(),snapshot=JSON.parse(await backup.text());
+  const encoded=snapshot.books.find(b=>b.id==="owned");assert.match(encoded.blob,/^data:text\/plain;base64,/);assert.equal(encoded.fileBytes,undefined);
+  await new Promise(resolve=>{const tx=db.transaction(["books","settings"],"readwrite");tx.objectStore("settings").delete("app");tx.objectStore("books").delete("owned");tx.objectStore("books").put({id:"legacy",title:"旧书",author:"旧作者",format:"PDF",category:"未分类",progress:7,updatedAt:1,blob:new Blob(["%PDF-legacy"])});tx.oncomplete=resolve;});
+  await library.importLibraryBackup(backup);
+  assert.deepEqual(await library.loadSetting("app"),appearance);
+  const bad=structuredClone(snapshot);bad.settings.find(s=>s.key==="app").value.customCanvas="url(invalid)";await assert.rejects(library.importLibraryBackup(new Blob([JSON.stringify(bad)])),/底色/);
+  const restored=(await library.loadLocalBooks()).find(b=>b.id==="owned");assert.equal(await restored.blob.text(),content);assert.equal(restored.progress,42);assert.equal(restored.currentLocation,"original-anchor");
+  assert.equal(await(await library.loadLocalBooks()).find(b=>b.id==="legacy").blob.text(),"%PDF-legacy");
+  await library.saveSetting("pdf-reflow:owned",{cached:true});await library.deleteLocalBook("owned");assert.equal(await library.loadSetting("pdf-reflow:owned"),null);
+  await assert.rejects(library.saveLocalBook({...restored,id:"empty",blob:new Blob([])}),/为空/);
+  assert.ok(!(await library.loadLocalBooks()).some(b=>b.id==="empty"));db.close();
 });

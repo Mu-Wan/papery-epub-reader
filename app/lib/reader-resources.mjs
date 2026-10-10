@@ -92,8 +92,15 @@ export async function createEpubBook(source, sourceBlob) {
 export function fingerprintBuffer(buffer) {
   const previous = fingerprints.get(buffer);
   if (previous) return previous;
-  const promise = crypto.subtle.digest('SHA-256', buffer).then(hash =>
-    Array.from(new Uint8Array(hash), byte => byte.toString(16).padStart(2, '0')).join(''));
+  const promise = globalThis.crypto?.subtle
+    ? crypto.subtle.digest('SHA-256', buffer).then(hash =>
+      Array.from(new Uint8Array(hash), byte => byte.toString(16).padStart(2, '0')).join(''))
+    : Promise.resolve().then(() => {
+      // Cache identity only; this fallback is not used for security or signatures.
+      let a=2166136261,b=5381;const bytes=new Uint8Array(buffer);
+      for(const byte of bytes){a=Math.imul(a^byte,16777619)>>>0;b=Math.imul(b,33)^byte;}
+      return `local-${bytes.length}-${a.toString(16)}-${(b>>>0).toString(16)}`;
+    });
   fingerprints.set(buffer, promise);
   promise.catch(() => fingerprints.delete(buffer));
   return promise;

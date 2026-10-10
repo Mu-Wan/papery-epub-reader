@@ -1,6 +1,7 @@
 import type { AppPreferences, BookFormat, ReaderAnnotation, ReaderSettings } from "./reader-types";
 import { portableSetting, validateSnapshot, type SyncRecord } from "./sync-merge";
 import { cleanAuthor } from "./book-metadata";
+import { readBlobBytes } from "./blob-bytes";
 
 export type LocalBookRecord = {
   id: string;
@@ -74,8 +75,18 @@ async function getAll<T>(storeName: string) {
   return records;
 }
 
-export const saveLocalBook = (record: LocalBookRecord) => put(BOOKS, record);
-export const loadLocalBooks = () => getAll<LocalBookRecord>(BOOKS);
+type StoredBook = Omit<LocalBookRecord,"blob"> & { blob?: Blob; fileBytes?: ArrayBuffer; fileMime?: string };
+function restoreBook(record: StoredBook): LocalBookRecord {
+  const {fileBytes,fileMime,...book}=record;
+  return {...book,blob:fileBytes instanceof ArrayBuffer ? new Blob([fileBytes],{type:fileMime||""}) : record.blob||new Blob([])};
+}
+async function storeBook(record: LocalBookRecord): Promise<StoredBook> {
+  const {blob,...book}=record;
+  return {...book,fileBytes:await readBlobBytes(blob),fileMime:blob.type};
+}
+// Persist owned bytes rather than a WebView Blob handle backed by a temporary URI.
+export const saveLocalBook = async (record: LocalBookRecord) => put(BOOKS, await storeBook(record));
+export const loadLocalBooks = async () => (await getAll<StoredBook>(BOOKS)).map(restoreBook);
 /** Merge in a transaction so delayed metadata work cannot overwrite a newer locator. */
 export async function updateLocalBook(id: string, changes: Partial<Pick<LocalBookRecord, "title" | "author" | "category" | "coverDataUrl" | "publicationYear" | "lastReadAt" | "metadataVersion" | "metadataEdited">>, onlyMissingMetadata = false) {
   const db = await getLibrary();
@@ -91,7 +102,7 @@ export async function updateLocalBook(id: string, changes: Partial<Pick<LocalBoo
         if (current.metadataEdited || current.publicationYear) delete patch.publicationYear;
         if (current.coverDataUrl) delete patch.coverDataUrl;
       }
-      result = { ...current, ...patch, updatedAt: Date.now() }; store.put(result);
+      const updated = { ...current, ...patch, updatedAt: Date.now() }; store.put(updated); result=restoreBook(updated);
     };
     tx.oncomplete = () => resolve(result); tx.onerror = () => reject(tx.error); tx.onabort = () => reject(tx.error);
   });
@@ -119,7 +130,7 @@ export async function deleteLocalBook(id:string){
     const notes=tx.objectStore(ANNOTATIONS).index("bookId").openKeyCursor(IDBKeyRange.only(id));
     notes.onsuccess=()=>{const cursor=notes.result;if(cursor){tx.objectStore(ANNOTATIONS).delete(cursor.primaryKey);cursor.continue()}};
     const settingKeys=tx.objectStore(SETTINGS).openKeyCursor();
-    settingKeys.onsuccess=()=>{const cursor=settingKeys.result;if(cursor){const key=String(cursor.primaryKey);if(key===`reader:${id}`||key===`pagination:${id}`||key===`analysis:${id}`)tx.objectStore(SETTINGS).delete(cursor.primaryKey);cursor.continue()}};
+    settingKeys.onsuccess=()=>{const cursor=settingKeys.result;if(cursor){const key=String(cursor.primaryKey);if(key===`reader:${id}`||key===`pagination:${id}`||key===`analysis:${id}`||key===`pdf-reflow:${id}`||key.startsWith(`pagination:${id}:`))tx.objectStore(SETTINGS).delete(cursor.primaryKey);cursor.continue()}};
     tx.oncomplete=()=>resolve();tx.onerror=()=>reject(tx.error);
   });
 }
@@ -228,7 +239,7 @@ export async function exportLibraryBackup(){
     [BOOKS,ANNOTATIONS,SETTINGS,CATEGORIES,SESSIONS].forEach((name,index)=>{const request=tx.objectStore(name).getAll();request.onsuccess=()=>{values[index]=request.result}});
     tx.oncomplete=()=>resolve(values as [LocalBookRecord[],ReaderAnnotation[],{key:string;value:unknown}[],{name:string}[],LocalReadingSession[]]);tx.onerror=()=>reject(tx.error);tx.onabort=()=>reject(tx.error);
   });
-  const encodedBooks=await Promise.all(books.map(async({blob,...book})=>({...book,coverDataUrl:book.coverDataUrl||settings.find(item=>item.key===`cover:${book.id}`)?.value||null,blob:await blobToDataUrl(blob)})));
+  const encodedBooks=await Promise.all(books.map(record=>restoreBook(record)).map(async({blob,...book})=>({...book,coverDataUrl:book.coverDataUrl||settings.find(item=>item.key===`cover:${book.id}`)?.value||null,blob:await blobToDataUrl(blob)})));
   const tombstones=Object.fromEntries(settings.filter(item=>item.key.startsWith("deleted:")).map(item=>[item.key.slice(8),item.value]));
   return new Blob([JSON.stringify({format:"papery-backup",version:1,exportedAt:new Date().toISOString(),books:encodedBooks,annotations,settings:settings.filter(item=>portableSetting(item.key)),categories,sessions,tombstones})],{type:"application/json"});
 }
@@ -248,9 +259,15 @@ export async function importLibraryBackup(file:File){
     for(const key of ["fontSize","lineHeight","paragraphSpacing","verticalMargin","horizontalMargin"])if(value[key]!==undefined&&(typeof value[key]!=="number"||!Number.isFinite(value[key])))throw new Error("备份排版设置无效");
     for(const key of ["profileName","avatarDataUrl","fontFamily","flow","spread","pageColor","pdfMode"])if(value[key]!==undefined&&typeof value[key]!=="string")throw new Error("备份偏好设置无效");
     if(value.pdfMode!==undefined&&value.pdfMode!=="original"&&value.pdfMode!=="text")throw new Error("备份 PDF 阅读模式无效");
+    if(value.followTheme!==undefined&&typeof value.followTheme!=="boolean")throw new Error("备份阅读外观设置无效");
+    if(value.appTheme!==undefined&&!["system","light","dark"].includes(String(value.appTheme)))throw new Error("备份日夜外观设置无效");
+    if(value.themePreset!==undefined&&!["sea","grove","ember","iris","custom"].includes(String(value.themePreset)))throw new Error("备份主题设置无效");
+    if(value.customAccent!==undefined&&(typeof value.customAccent!=="string"||!/^#[0-9a-f]{6}$/i.test(value.customAccent)))throw new Error("备份主题颜色无效");
+    if(value.canvasPreset!==undefined&&!["neutral","mist","sage","sand","lilac","custom"].includes(String(value.canvasPreset)))throw new Error("备份界面底色设置无效");
+    if(value.customCanvas!==undefined&&(typeof value.customCanvas!=="string"||!/^#[0-9a-f]{6}$/i.test(value.customCanvas)))throw new Error("备份界面底色无效");
   }
   // Decode before opening the transaction, so malformed data cannot partially restore.
-  const decodedBooks=data.books.map(book=>({...book,blob:dataUrlToBlob(String(book.blob))}));
+  const decodedBooks=await Promise.all(data.books.map(book=>storeBook({...book,blob:dataUrlToBlob(String(book.blob))} as LocalBookRecord)));
   const db=await getLibrary();
   await new Promise<void>((resolve,reject)=>{
     const tx=db.transaction([BOOKS,ANNOTATIONS,SETTINGS,CATEGORIES,SESSIONS],"readwrite");
