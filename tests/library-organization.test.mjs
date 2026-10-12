@@ -171,14 +171,14 @@ test("PDF/TXT owned bytes survive temporary Blob failures, backup restore and le
   const content="PDF/TXT independent content 清晨",blob=new Blob([content],{type:"text/plain"});
   blob.arrayBuffer=async()=>new ArrayBuffer(0);
   await library.saveLocalBook({id:"owned",title:"清晨",author:"林青",format:"TXT",category:"未分类",progress:0,updatedAt:100,blob});
-  const db=await new Promise(resolve=>{const r=indexedDB.open("papery-library",3);r.onsuccess=()=>resolve(r.result);});
+  const db=await new Promise(resolve=>{const r=indexedDB.open("papery-library");r.onsuccess=()=>resolve(r.result);});
   const raw=await new Promise(resolve=>{const r=db.transaction("books").objectStore("books").get("owned");r.onsuccess=()=>resolve(r.result);});
   assert.ok(raw.fileBytes instanceof ArrayBuffer);assert.equal(raw.blob,undefined);assert.equal(new TextDecoder().decode(raw.fileBytes),content);
   await library.saveBookProgress("owned",42,"original-anchor");
   const appearance={appTheme:"system",themePreset:"grove",canvasPreset:"custom",customCanvas:"#EDE7DA",customAccent:"#4E8FC3"};await library.saveSetting("app",appearance);
   const backup=await library.exportLibraryBackup(),snapshot=JSON.parse(await backup.text());
   const encoded=snapshot.books.find(b=>b.id==="owned");assert.match(encoded.blob,/^data:text\/plain;base64,/);assert.equal(encoded.fileBytes,undefined);
-  await new Promise(resolve=>{const tx=db.transaction(["books","settings"],"readwrite");tx.objectStore("settings").delete("app");tx.objectStore("books").delete("owned");tx.objectStore("books").put({id:"legacy",title:"旧书",author:"旧作者",format:"PDF",category:"未分类",progress:7,updatedAt:1,blob:new Blob(["%PDF-legacy"])});tx.oncomplete=resolve;});
+  await new Promise(resolve=>{const tx=db.transaction(["books","book-index","settings"],"readwrite");tx.objectStore("settings").delete("app");tx.objectStore("books").delete("owned");tx.objectStore("book-index").delete("owned");const legacy={id:"legacy",title:"旧书",author:"旧作者",format:"PDF",category:"未分类",progress:7,updatedAt:1};tx.objectStore("books").put({...legacy,blob:new Blob(["%PDF-legacy"])});tx.objectStore("book-index").put(legacy);tx.oncomplete=resolve;});
   await library.importLibraryBackup(backup);
   assert.deepEqual(await library.loadSetting("app"),appearance);
   const bad=structuredClone(snapshot);bad.settings.find(s=>s.key==="app").value.customCanvas="url(invalid)";await assert.rejects(library.importLibraryBackup(new Blob([JSON.stringify(bad)])),/底色/);

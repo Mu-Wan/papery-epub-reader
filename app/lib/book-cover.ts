@@ -1,4 +1,5 @@
 import { readBlobBytes } from "./blob-bytes";
+import { coverThumbnail } from "./cover-thumbnail";
 import { loadPdfJs, pdfDocumentOptions } from "./pdf-loader";
 import { authorFromFilename, authorFromFrontMatter, cleanAuthor, creditedAuthors, decodeMetadataText, publicationYear } from "./book-metadata";
 
@@ -8,7 +9,7 @@ export async function readEpubMetadata(blob: Blob) {
   try {
     const entries = await zip.getEntries();
     const find = (path: string) => entries.find(entry => entry.filename === decodeURIComponent(path));
-    const text = async (path: string) => { const entry = find(path); return entry && !entry.directory ? await entry.getData(new TextWriter()) : ""; };
+    const text = async (path: string) => { const entry = find(path);if(entry&&!entry.directory&&entry.uncompressedSize>2*1024*1024)throw new Error("书籍目录信息过大，无法安全读取");return entry && !entry.directory ? await entry.getData(new TextWriter()) : ""; };
     const parse = (value: string) => new DOMParser().parseFromString(value, "application/xml");
     const container = parse(await text("META-INF/container.xml"));
     const path = container.querySelector("rootfile")?.getAttribute("full-path");
@@ -33,7 +34,7 @@ export async function readEpubMetadata(blob: Blob) {
     }
     const entry = imagePath ? find(imagePath) : undefined;
     const mime = items.find(item => resolve(item.getAttribute("href") || "") === imagePath)?.getAttribute("media-type") || "image/jpeg";
-    const coverDataUrl = entry && !entry.directory ? await (async () => dataUrl(await entry.getData(new BlobWriter(mime))))().catch(() => null) : null;
+    const coverDataUrl = entry && !entry.directory && entry.uncompressedSize<=32*1024*1024 ? await (async () => { const image=await entry.getData(new BlobWriter(mime));return await coverThumbnail(image)||await dataUrl(image); })().catch(() => null) : null;
     const metas = Array.from(opf.getElementsByTagNameNS("*", "meta"));
     let author = creditedAuthors(Array.from(opf.getElementsByTagNameNS("*", "creator")).map(creator => ({
       name: creator.textContent || "", role: creator.getAttributeNS("http://www.idpf.org/2007/opf", "role") || creator.getAttribute("opf:role")

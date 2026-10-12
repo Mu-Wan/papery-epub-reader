@@ -1,4 +1,5 @@
-import { copyFile, mkdir, cp } from "node:fs/promises";
+import { build } from "esbuild";
+import { copyFile, mkdir, cp, unlink } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -19,17 +20,6 @@ const filesToCopy = [
   [
     join(projectRoot, "node_modules", "pdfjs-dist", "legacy", "build", "pdf.worker.min.mjs"),
     join(vendorDir, "pdf.worker.min.mjs"),
-  ],
-  [
-    join(
-      projectRoot,
-      "node_modules",
-      "@fontsource",
-      "lxgw-wenkai",
-      "files",
-      "lxgw-wenkai-latin-300-normal.woff2"
-    ),
-    join(vendorDir, "lxgw-wenkai.woff2"),
   ],
 ];
 
@@ -68,3 +58,8 @@ main().catch((err) => {
   console.error("Fatal error:", err);
   process.exit(1);
 });
+
+await build({entryPoints:[join(projectRoot,"app/lib/txt-chapters-worker.js")],outfile:join(vendorDir,"txt-chapters-worker.js"),bundle:true,format:"iife",target:"es2017",minify:true});
+// Complete offline glyph coverage now lives in public/fonts/wenkai. Remove only
+// the obsolete generated full-font copy from previous local builds.
+await unlink(join(vendorDir,"lxgw-wenkai.woff2")).catch(error=>{if(error.code!=="ENOENT")throw error});

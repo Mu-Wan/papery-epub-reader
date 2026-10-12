@@ -1,4 +1,6 @@
 import java.util.Properties
+import java.nio.file.Files
+import java.nio.file.StandardCopyOption
 
 plugins {
     id("com.android.application")
@@ -85,3 +87,21 @@ dependencies {
 }
 
 apply(from = "tauri.build.gradle.kts")
+
+// Tauri links the native library from Cargo's output. Gradle on Windows can
+// cache the link without noticing that Cargo replaced its target. Materialize
+// the verified build before merging JNI, so the APK cannot keep an older reader.
+afterEvaluate {
+    tasks.named("mergeUniversalReleaseJniLibFolders") {
+        outputs.upToDateWhen { false }
+        doFirst {
+            val source = rootProject.file("../../target/aarch64-linux-android/release/libpapery_reader_lib.so").toPath()
+            val destination = file("src/main/jniLibs/arm64-v8a/libpapery_reader_lib.so").toPath()
+            check(Files.isRegularFile(source)) { "The current ARM64 reader library is missing" }
+            Files.createDirectories(destination.parent)
+            if (Files.isSymbolicLink(destination)) Files.delete(destination)
+            Files.copy(source, destination, StandardCopyOption.REPLACE_EXISTING)
+        }
+    }
+    tasks.named("mergeUniversalReleaseNativeLibs") { outputs.upToDateWhen { false } }
+}

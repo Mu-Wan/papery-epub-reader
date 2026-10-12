@@ -1,0 +1,81 @@
+/* The frame owns the rounded surface; only its inset content can scroll. */
+.appShell :is(.settingsPanel,.profilePanel).framedDialog[role=dialog] {overflow:hidden;min-height:0;}
+.appShell :is(.settingsPanel,.profilePanel).framedDialog > .dialogScroll {display:flex;flex-direction:column;gap:inherit;flex:1 1 auto;min-height:0;overflow-x:hidden;overflow-y:auto;overscroll-behavior:contain;scrollbar-gutter:stable;padding-inline-end:28px;margin-inline-end:-18px;}
+.appShell .framedDialog > :is(.panelHeader,.panelTabs,.uiButton) {flex-shrink:0;}
+.appShell .dialogScroll > * {flex-shrink:0;}
+.appShell .dialogScroll:focus-visible {outline:2px solid var(--accent-ink);outline-offset:2px;border-radius:4px;}
+.appShell .profileScroll > p {margin:0;color:var(--secondary);font-size:12px;line-height:1.7;}
+.appShell .profileHelp {display:flex;align-items:center;gap:10px;padding:12px 0;color:var(--secondary);font-size:13px;text-align:left;}
+.appShell .profileHelp:hover {color:var(--ink);}
+.appShell .profileHelp:focus-visible {outline:2px solid var(--accent-ink);outline-offset:3px;border-radius:4px;}
+.appShell:not([data-mobile=true]) :is(.dialogScroll,.settingsPanel,.tocPanel,.bookSearchPanel,.annotationComposer,.importModal,.smallModal,.confirmModal,.profilePanel,.choiceDialog,.bookMetadataDialog,.spinePreviewSheet) {scrollbar-width:auto;scrollbar-color:auto;}
+.appShell:not([data-mobile=true]) :is(.dialogScroll,.settingsPanel,.tocPanel,.bookSearchPanel,.annotationComposer,.importModal,.smallModal,.confirmModal,.profilePanel,.choiceDialog,.bookMetadataDialog,.spinePreviewSheet)::-webkit-scrollbar {width:8px;height:8px;background:transparent;}
+.appShell:not([data-mobile=true]) :is(.settingsPanel,.tocPanel,.bookSearchPanel,.annotationComposer,.importModal,.smallModal,.confirmModal,.profilePanel,.choiceDialog,.bookMetadataDialog,.spinePreviewSheet)::-webkit-scrollbar-track {margin-block:28px;background:transparent;}
+.appShell:not([data-mobile=true]) .dialogScroll::-webkit-scrollbar-track {margin-block:4px;background:transparent;}
+.appShell:not([data-mobile=true]) :is(.dialogScroll,.settingsPanel,.tocPanel,.bookSearchPanel,.annotationComposer,.importModal,.smallModal,.confirmModal,.profilePanel,.choiceDialog,.bookMetadataDialog,.spinePreviewSheet)::-webkit-scrollbar-thumb {border:2px solid transparent;background:color-mix(in srgb,var(--secondary) 28%,transparent);background-clip:padding-box;border-radius:6px;}
+.appShell:not([data-mobile=true]) :is(.dialogScroll,.settingsPanel,.tocPanel,.bookSearchPanel,.annotationComposer,.importModal,.smallModal,.confirmModal,.profilePanel,.choiceDialog,.bookMetadataDialog,.spinePreviewSheet)::-webkit-scrollbar-button {display:none;width:0;height:0;}
+@supports not selector(::-webkit-scrollbar) {.appShell .dialogScroll {scrollbar-width:thin;scrollbar-color:var(--outline) transparent;}}
+.appShell .appUpdateContent {display:flex;flex-direction:column;gap:20px;min-width:0;padding:4px 0;}
+.appShell .updateVersion {display:flex;flex-direction:column;gap:6px;align-items:flex-start;padding-bottom:14px;}
+.appShell .updateVersion > span {font-size:12px;color:var(--secondary);}
+.appShell .updateVersion strong {font-size:44px;font-weight:600;line-height:1.1;letter-spacing:-1.5px;color:var(--ink);}
+.appShell .updateStatus {font-size:14px;line-height:1.7;color:var(--ink);}
+.appShell .updateStatus.error {color:var(--orange-text);}
+.appShell .updateStatus small {display:block;color:var(--secondary);font-size:11px;margin-top:5px;}
+.appShell .updateActions {display:flex;flex-wrap:wrap;gap:10px;}
+.appShell .updateActions .uiButton {min-height:44px;border-radius:10px;}
+.appShell .updateActions .uiButton:not(.dark) {background:color-mix(in srgb,var(--ink) 8%,var(--canvas));border:0;color:var(--ink);}
+.appShell .updateActions .uiButton {box-shadow:none;transform:none;transition:background-color 140ms ease,border-color 140ms ease;}
+.appShell .updateActions .uiButton:hover:not(:disabled) {box-shadow:none;transform:none;background:color-mix(in srgb,var(--ink) 12%,var(--canvas));}
+.appShell .updateActions .uiButton.dark:hover:not(:disabled) {background:color-mix(in srgb,var(--ink) 88%,var(--canvas));}
+.appShell .updateActions .uiButton:active:not(:disabled) {transform:scale(.98);box-shadow:none;}
+.appShell .updateActions .uiButton:focus-visible {outline:2px solid var(--accent-ink);outline-offset:3px;}
+.appShell .updateActions .uiButton:disabled {opacity:.55;}
+@media(max-width:900px){.appShell:not([data-mobile=true]) .framedDialog > .dialogScroll {padding-inline-end:22px;margin-inline-end:-12px;}}
+.appShell[data-mobile=true] .framedDialog > .dialogScroll {padding-inline-end:0;margin-inline-end:0;scrollbar-gutter:auto;scrollbar-width:none;}
+.appShell[data-mobile=true] .framedDialog > .dialogScroll::-webkit-scrollbar {display:none;width:0;height:0;}
+.appShell .updateReleaseHeader {display:flex;justify-content:space-between;gap:12px;align-items:baseline;padding-top:16px;}
+.appShell .updateReleaseHeader h3 {margin:0;font-size:14px;font-weight:600;}
+.appShell .updateReleaseHeader h3 span {color:var(--secondary);font-weight:400;}
+.appShell .updateReleaseHeader button {flex-shrink:0;color:var(--accent-ink);font-size:12px;}
+.appShell .updateNotes {margin:0;white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.85;font-size:12px;color:var(--secondary);}
+.appShell .updateHint {margin:8px 0 0;font-size:11px;line-height:1.8;color:var(--secondary);}
+.appShell .updateDot {display:inline-block;width:6px;height:6px;border-radius:50%;background:#D96464;margin-left:5px;vertical-align:middle;}
+.appShell .userPanel .panelTabs {flex-wrap:nowrap;gap:4px;}
+.appShell .userPanel .panelTabs button {white-space:nowrap;min-width:0;}
+@media(max-width:380px){.appShell .userPanel .panelTabs button {padding-inline:10px;font-size:12px;}}
+
+.appShell[data-mobile=true] .updateNotes {font-size:14px;}
+.appShell[data-mobile=true] :is(.updateVersion > span,.updateHint) {font-size:12px;}
+.appShell .updateTransfer {display:flex;flex-direction:column;gap:10px;padding:8px 0 16px;}
+.appShell .updateTransferMeta {display:flex;justify-content:space-between;gap:12px;align-items:baseline;font-size:13px;}
+.appShell .updateTransferMeta strong {font-weight:600;color:var(--accent-ink);}
+.appShell .updateProgress {height:6px;overflow:hidden;border-radius:3px;background:var(--surface-inset);}
+.appShell .updateProgress i {display:block;height:100%;background:var(--accent);border-radius:3px;}
+.appShell .updateTransfer small {font-size:11px;color:var(--secondary);}
+.appShell .updateTransfer p {margin:0;font-size:12px;line-height:1.7;color:var(--secondary);}
+.appShell .sidebarUpdate .updateDot {margin-left:auto;}
+.appShell .appSettingRow {display:flex;align-items:center;justify-content:space-between;width:100%;gap:20px;min-height:48px;padding:10px 12px;background:var(--surface-muted);color:var(--ink);border:0;border-radius:7px;text-align:left;font-size:14px;}
+.appSettingRow>span {min-width:0;}
+.appSettingRow small {display:block;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:5px;font-size:12px;color:var(--secondary);}
+.appSettingRow:hover {background:var(--surface-inset);}
+.appShell .chapterRuleDialog {width:min(580px,calc(100vw - 32px));}
+.appShell .chapterRuleFields {gap:20px;}
+.appShell .chapterRuleFields label {display:flex;flex-direction:column;gap:9px;font-size:13px;}
+.appShell .chapterRuleFields :is(input,textarea) {width:100%;min-height:44px;border:1px solid var(--outline);border-radius:8px;padding:11px 12px;background:var(--surface-muted);color:var(--ink);resize:vertical;line-height:1.65;}
+.appShell .chapterRuleFields small {font-size:11px;line-height:1.7;color:var(--secondary);}
+.appShell :is(.ruleMode,.ruleDefault) {display:flex;align-items:center;justify-content:space-between;gap:16px;font-size:13px;}
+.appShell .ruleMode .selectionGroup {margin:0;}
+.appShell .ruleSample {display:flex;gap:12px;align-items:flex-end;}
+.appShell .ruleSample label {flex:1;min-width:0;}
+.appShell .ruleSample button {flex-shrink:0;min-height:44px;border-radius:8px;}
+.appShell .chapterRuleFields p {margin:0;font-size:12px;line-height:1.7;}
+.appShell .rulePreview {padding:16px 0;border-block:1px solid var(--line);}
+.appShell .rulePreview ol {list-style:none;margin:12px 0 0;padding:0;display:grid;gap:7px;font-size:12px;line-height:1.7;overflow-wrap:anywhere;}
+.appShell .ruleError {color:var(--danger);}
+.appShell .ruleAuto {align-self:flex-start;color:var(--secondary);font-size:12px;padding:8px 0;text-decoration:underline;text-underline-offset:4px;}
+.appShell .txtChapterError {position:absolute;bottom:4px;left:10%;right:10%;z-index:8;padding:8px 12px;background:var(--surface);font-size:12px;border-radius:6px;color:var(--secondary);}
+.appShell[data-mobile=true] .chapterRuleFields :is(label,.ruleMode,.ruleDefault) {font-size:14px;}
+.appShell .chapterRuleDialog > .uiButton {flex-shrink:0;}
+@media(prefers-reduced-motion:reduce){.appShell .updateActions .uiButton {transition:none;}}
+.flow-paginated .txtFlowContent h2:not(:first-child) {break-before:column;}

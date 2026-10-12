@@ -5,9 +5,9 @@ import { Check, ChevronRight, X } from "./PaperyIcons";
 import { useDialogFocus } from "./use-dialog-focus";
 
 type Option = { value: string; label: string };
-export function PaperySelect({label,value,options,onChange,className=""}:{label:string;value:string;options:Option[];onChange:(value:string)=>void;className?:string}) {
+export function PaperySelect({label,value,options,onChange,className="",displayLabel}:{label:string;value:string;options:Option[];onChange:(value:string)=>void;className?:string;displayLabel?:string}) {
   const [open,setOpen]=useState(false),[container,setContainer]=useState<Element|null>(null),id=useId();
-  return <><button className={`paperySelect ${className}`} aria-label={label} aria-haspopup="dialog" aria-expanded={open} aria-controls={open?id:undefined} onClick={event=>{setContainer(event.currentTarget.closest(".appShell")||document.body);setOpen(true)}}><span>{options.find(item=>item.value===value)?.label||label}</span><ChevronRight size={16}/></button>{open&&createPortal(<SelectChoices id={id} label={label} value={value} options={options} onClose={()=>setOpen(false)} onChange={next=>{onChange(next);setOpen(false)}}/>,container||document.body)}</>;
+  return <><button className={`paperySelect ${className}`} aria-label={label} title={displayLabel ? options.find(item=>item.value===value)?.label : undefined} aria-haspopup="dialog" aria-expanded={open} aria-controls={open?id:undefined} onClick={event=>{setContainer(event.currentTarget.closest(".appShell")||document.body);setOpen(true)}}><span>{displayLabel||options.find(item=>item.value===value)?.label||label}</span><ChevronRight size={16}/></button>{open&&createPortal(<SelectChoices id={id} label={label} value={value} options={options} onClose={()=>setOpen(false)} onChange={next=>{onChange(next);setOpen(false)}}/>,container||document.body)}</>;
 }
 function SelectChoices({id,label,value,options,onClose,onChange}:{id:string;label:string;value:string;options:Option[];onClose:()=>void;onChange:(value:string)=>void}) {
   const root=useDialogFocus(onClose);

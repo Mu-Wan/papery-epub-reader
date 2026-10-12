@@ -4,6 +4,7 @@ export type ReaderSpread = "single" | "double";
 export type AnnotationStyle = "highlight" | "underline" | "bookmark";
 
 export type ReaderSettings = {
+  txtChapterRule?: import("./txt-chapters").TxtChapterRule;
   followTheme?: boolean;
   pdfMode?: "original" | "text";
   fontFamily: "system" | "lxgw" | "serif" | "sans";

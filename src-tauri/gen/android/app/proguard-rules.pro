@@ -1,4 +1,6 @@
 # Add project specific ProGuard rules here.
+-keep class com.papery.reader.UpdateInstallerPlugin { *; }
+-keep class com.papery.reader.InstallerArgs { *; }
 -keepclassmembers class com.papery.reader.MainActivity$ReaderBridge {
     @android.webkit.JavascriptInterface <methods>;
 }

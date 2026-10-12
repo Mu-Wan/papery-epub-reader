@@ -49,9 +49,13 @@ export function validateSnapshot(value: unknown): asserts value is SyncSnapshot 
   for (const session of v.sessions) if (typeof session.book_id !== "string" || !session.book_id || typeof session.duration_seconds !== "number" || !Number.isFinite(session.duration_seconds) || session.duration_seconds < 0) throw new Error("备份阅读记录无效");
 }
 
-export const portableSetting = (key: string) => key === "app" || key === "category-order" || key === "last-read-book-id" || key === "library-view" || key === "notes-view" || key.startsWith("reader:");
+export const portableSetting = (key: string) => key === "app" || key === "reader-defaults" || key === "txt-chapter-default" || key === "category-order" || key === "last-read-book-id" || key === "library-view" || key === "notes-view" || key.startsWith("reader:");
 
 const stamp = (item: SyncRecord) => Number(item.updatedAt || item.createdAt || item.started_at || 0);
+export function syncRecordOrder(item: SyncRecord): string {
+  const entries=Object.entries(item).filter(([key])=>!["blob","fileBytes","fileMime","resource"].includes(key)).sort(([a],[b])=>a.localeCompare(b));
+  return JSON.stringify(Object.fromEntries(entries));
+}
 /** Deterministic last-edit-wins. Progress may move backwards; tombstones prevent resurrection. */
 export function mergeSnapshots(snapshots: SyncSnapshot[]): SyncSnapshot {
   const tombstones: Record<string, number> = {};
@@ -68,7 +72,7 @@ export function mergeSnapshots(snapshots: SyncSnapshot[]): SyncSnapshot {
       // Cached analysis, cover extraction and OAuth/device settings are regenerated or local-only.
       if (collection === "settings" && !portableSetting(key)) continue;
       const previous = items.get(key);
-      if (!previous || stamp(item) > stamp(previous) || (stamp(item) === stamp(previous) && JSON.stringify(item) > JSON.stringify(previous))) items.set(key, item);
+      if (!previous || stamp(item) > stamp(previous) || (stamp(item) === stamp(previous) && syncRecordOrder(item) > syncRecordOrder(previous))) items.set(key, item);
     }
     return [...items.values()].sort((a,b) => String(a[keyName]).localeCompare(String(b[keyName])));
   };

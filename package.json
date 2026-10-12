@@ -1,6 +1,6 @@
 {
   "name": "papery-reader",
-  "version": "0.1.50",
+  "version": "0.1.53",
   "private": true,
   "engines": {
     "node": ">=22.13.0"
@@ -11,7 +11,7 @@
     "dev": "cross-env PAPERY_STATIC_BUILD=1 next dev",
     "build": "node scripts/tauri-build.mjs",
     "start": "WRANGLER_LOG_PATH=.wrangler/wrangler.log vinext start",
-    "test": "node --test tests/reader-core.test.mjs tests/drive-auth.test.mjs tests/drive-sync-upload.test.mjs tests/reading-stats.test.mjs tests/reader-resources.test.mjs tests/reading-session.test.mjs tests/mobile-runtime.test.mjs tests/txt-reader.test.mjs tests/reading-progress.test.mjs tests/reading-scheduler.test.mjs tests/epub-references.test.mjs tests/category-order.test.mjs tests/library-organization.test.mjs tests/epub-scroll-layout.test.mjs tests/pdf-reflow.test.mjs tests/selection-commit.test.mjs tests/appearance-storage.test.mjs tests/selection-lookup.test.mjs",
+    "test": "node --test tests/reader-core.test.mjs tests/drive-auth.test.mjs tests/drive-sync-upload.test.mjs tests/reading-stats.test.mjs tests/reader-resources.test.mjs tests/reading-session.test.mjs tests/mobile-runtime.test.mjs tests/txt-reader.test.mjs tests/reading-progress.test.mjs tests/reading-scheduler.test.mjs tests/epub-references.test.mjs tests/category-order.test.mjs tests/library-organization.test.mjs tests/epub-scroll-layout.test.mjs tests/pdf-reflow.test.mjs tests/selection-commit.test.mjs tests/appearance-storage.test.mjs tests/selection-lookup.test.mjs tests/webdav.test.mjs tests/library-memory.test.mjs tests/app-updates.test.mjs tests/txt-chapters.test.mjs tests/reader-compat.test.mjs",
     "validate:artifact": "bash scripts/validate-artifact.sh",
     "lint": "bash scripts/sites-env.sh -- eslint . --ignore-pattern dist --ignore-pattern .next --ignore-pattern public/vendor",
     "db:generate": "bash scripts/sites-env.sh -- drizzle-kit generate",
@@ -23,10 +23,11 @@
   },
   "dependencies": {
     "@fontsource/lxgw-wenkai": "^5.3.0",
-    "@tauri-apps/api": "^2.0.0",
+    "@tauri-apps/api": "~2.12.3",
     "@tauri-apps/plugin-deep-link": "^2.4.10",
     "@tauri-apps/plugin-dialog": "^2.7.2",
-    "@tauri-apps/plugin-fs": "^2.5.1",
+    "@tauri-apps/plugin-fs": "~2.7.0",
+    "@tauri-apps/plugin-http": "^2.8.2",
     "@tauri-apps/plugin-opener": "^2.5.5",
     "@zip.js/zip.js": "^2.8.34",
     "drizzle-orm": "0.45.2",

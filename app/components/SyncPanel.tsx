@@ -6,9 +6,19 @@ import { connectDriveToken, disconnectDrive, driveConnected, syncGoogleDrive, ty
 import { startDriveLogin, finishDriveLogin, cancelDriveLogin } from "../lib/drive-auth";
 import { useDialogFocus } from "./use-dialog-focus";
 import { BackupSyncGuide } from "./BackupSyncGuide";
+import { WebDavPanel } from "./WebDavPanel";
 import { ToggleSwitch } from "./ToggleSwitch";
 
-export function SyncPanel({onClose,onUpdated,embedded=false,onBusyChange}:{onClose:()=>void;onUpdated:()=>void;embedded?:boolean;onBusyChange?:(busy:boolean)=>void}) {
+type SyncProps={onClose:()=>void;onUpdated:()=>void;embedded?:boolean;onBusyChange?:(busy:boolean)=>void;onBeforeSync?:()=>Promise<void>};
+export function SyncPanel(props:SyncProps) {
+ const onBusyChange=props.onBusyChange;
+ const [provider,setProvider]=useState<"drive"|"webdav">("drive"),[busy,setBusy]=useState(false),[ready,setReady]=useState(false);
+ useEffect(()=>{let active=true;void loadSetting<string>("sync:provider").then(value=>{if(active){setProvider(value==="webdav"?"webdav":"drive");setReady(true)}}).catch(()=>{if(active)setReady(true)});return()=>{active=false}},[]);
+ useEffect(()=>{onBusyChange?.(busy)},[busy,onBusyChange]);
+ const select=async(next:"drive"|"webdav")=>{try{await saveSetting("sync:provider",next);setProvider(next)}catch{}};
+ return <><div className="syncProvider" role="group" aria-label="同步服务"><button className={provider==="drive"?"active":""} aria-pressed={provider==="drive"} disabled={busy||!ready} onClick={()=>void select("drive")}>Google Drive</button><button className={provider==="webdav"?"active":""} aria-pressed={provider==="webdav"} disabled={busy||!ready} onClick={()=>void select("webdav")}>WebDAV</button></div>{ready&&(provider==="webdav"?<WebDavPanel onUpdated={props.onUpdated} onBusyChange={setBusy} onBeforeSync={props.onBeforeSync}/>:<DriveSyncPanel {...props} onBusyChange={setBusy}/>)}</>;
+}
+function DriveSyncPanel({onClose,onUpdated,embedded=false,onBusyChange,onBeforeSync}:SyncProps) {
  const dialog=useDialogFocus<HTMLElement>(()=>{if(!busy)onClose()},!embedded);
  const [config,setConfig]=useState<DriveConfig>({clientId:"",autoSync:false});
  const [connected,setConnected]=useState(()=>driveConnected()),[busy,setBusy]=useState(false),[waiting,setWaiting]=useState(false),[status,setStatus]=useState("尚未连接 Google Drive"),[code,setCode]=useState("");
@@ -17,7 +27,7 @@ export function SyncPanel({onClose,onUpdated,embedded=false,onBusyChange}:{onClo
  const accept=async(input:string)=>{setFailed(false);try{const result=await finishDriveLogin(input);connectDriveToken(result.access_token,result.expires_in);setCode("");setConnected(true);setWaiting(false);setStatus("已连接 Google Drive，可以立即同步")}catch(error){setFailed(true);setStatus(error instanceof Error?error.message:"连接码无效，请重新连接")}};
  useEffect(()=>{let disposed=false;let unlisten:(()=>void)|undefined;void loadSetting<DriveConfig>("sync:drive-config").then(value=>{if(value&&!disposed)setConfig({clientId:value.clientId||"",autoSync:!!value.autoSync})});if("__TAURI_INTERNALS__" in window)void import("@tauri-apps/plugin-deep-link").then(async({onOpenUrl})=>{const stop=await onOpenUrl(urls=>{const url=urls.find(value=>value.startsWith("papery://drive-auth#"));if(url)void accept(url)});if(disposed)stop();else unlisten=stop}).catch(()=>{if(!disposed)setStatus("可通过系统浏览器授权，并粘贴连接码返回")});return()=>{disposed=true;unlisten?.();cancelDriveLogin()}},[]);
  const save=async(next:DriveConfig)=>{setConfig(next);await saveSetting("sync:drive-config",next)};
- const sync=async()=>{setBusy(true);setFailed(false);try{const result=await syncGoogleDrive(setStatus);await saveSetting("sync:last-success",Date.now());setStatus(`同步完成：${result.books} 本书，${result.notes} 条笔记`);onUpdated()}catch(error){setFailed(true);setStatus(error instanceof Error?error.message:"同步失败，本地数据已保留")}finally{setBusy(false);setConnected(driveConnected())}};
+ const sync=async()=>{setBusy(true);setFailed(false);try{await onBeforeSync?.();const result=await syncGoogleDrive(setStatus);await saveSetting("sync:last-success",Date.now());setStatus(`同步完成：${result.books} 本书，${result.notes} 条笔记`);onUpdated()}catch(error){setFailed(true);setStatus(error instanceof Error?error.message:"同步失败，本地数据已保留")}finally{setBusy(false);setConnected(driveConnected())}};
  const login=async()=>{setBusy(true);setFailed(false);try{const url=await startDriveLogin(config.clientId);if("__TAURI_INTERNALS__" in window){const {openUrl}=await import("@tauri-apps/plugin-opener");await openUrl(url)}else{window.open(url,"_blank","noopener,noreferrer")}setWaiting(true);setStatus("浏览器会尝试直接打开 Google 官方授权窗口。若没有弹出，请在连接页点击“继续到 Google”。请保持此面板打开，授权后会尝试自动返回。")}catch(error){setFailed(true);setStatus(error instanceof Error?error.message:"无法打开授权页面")}finally{setBusy(false)}};
  return <>{!embedded&&<button className="modalScrim" aria-label="关闭同步设置" onClick={busy?undefined:onClose}/>}<aside ref={embedded?undefined:dialog} className={`syncPanel ${embedded?"userSyncContent":"settingsPanel"}`} role={embedded?undefined:"dialog"} aria-modal={embedded?undefined:true} aria-label="Google Drive 同步" aria-busy={busy}>{!embedded&&<div className="panelHeader"><div><h2>Google Drive 同步</h2></div><button disabled={busy} onClick={onClose} aria-label="关闭同步设置"><X size={20}/></button></div>}
  <p className="syncDescription">只需 Web 应用客户端 ID，无需客户端密钥或自建登录服务。同步书籍、阅读位置、笔记、书签、分类与排版。</p>

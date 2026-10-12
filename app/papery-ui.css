@@ -792,7 +792,7 @@
 
 .resumeArtworkButton .bookArtwork {
   overflow: visible;
-  filter: drop-shadow(0 12px 16px rgba(26,29,35,.14));
+  filter: drop-shadow(0 4px 7px rgba(26,29,35,.07));
 }
 
 .textArtwork {

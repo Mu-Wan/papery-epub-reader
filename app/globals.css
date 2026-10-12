@@ -1,8 +1,8 @@
 @import "tailwindcss";
+@import "./reader-fonts.css";
 
 /* Document rendering, document controls and global reset. Product UI lives in papery-ui.css. */
 @layer papery-document {
-@font-face{font-family:"LXGW WenKai";font-style:normal;font-display:swap;font-weight:300 500;src:url("/vendor/lxgw-wenkai.woff2") format("woff2")}
 
 :root{--bg:#e9e9e7;--panel:rgba(248,248,246,.78);--card:rgba(255,255,253,.88);--ink:#171714;--muted:#74736e;--line:rgba(34,32,26,.08);--orange:#f1a052;--orange2:#ffd19c;--shadow:0 12px 32px rgba(45,40,29,.045);--radius:24px}
 *{box-sizing:border-box}html,body{height:100%;overflow:hidden}body{margin:0;background:var(--bg);color:var(--ink);font-family:Inter,"PingFang SC","Microsoft YaHei",Arial,sans-serif;-webkit-font-smoothing:antialiased}button,input{font:inherit}button{color:inherit}button:focus-visible,input:focus-visible{outline:2px solid rgba(241,160,82,.55);outline-offset:2px}::-webkit-scrollbar{width:7px;height:7px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:rgba(37,34,28,.16);border-radius:10px;border:2px solid transparent;background-clip:padding-box}::-webkit-scrollbar-thumb:hover{background:rgba(37,34,28,.28);border:1px solid transparent;background-clip:padding-box}

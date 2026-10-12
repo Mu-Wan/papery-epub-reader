@@ -31,6 +31,12 @@ test('Whole TXT content, chapter offsets and section ranges remain contiguous',(
   for(const p of paragraphs)assert.equal(parsed.normalized.slice(p.start,p.end),p.text);
 });
 
+test('Linear section traversal preserves chapter boundaries, duplicate volumes and long paragraphs',()=>{
+  const original=(text,chapters,targetSize)=>{const bounds=chapters.map(c=>c.offset).filter(o=>o>0&&o<text.length),sections=[];let start=0;while(start<text.length){const target=Math.min(text.length,start+targetSize);let end=bounds.filter(o=>o>start+8000&&o<=target).at(-1)||0;if(!end){end=text.lastIndexOf('\n',target);if(end<=start+8000)end=text.indexOf('\n',target)}if(end<=start||end>text.length)end=Math.min(text.length,target);sections.push({start,end,index:sections.length});start=end}return sections};
+  const text=Array.from({length:90},(_,i)=>`第${i+1}章\n${'正文。'.repeat(i%7===0?30000:4000)}\n`).join('');const chapters=parseTxt(text).chapters;const volumes=chapters.flatMap((c,i)=>i%9===0?[c,{...c}]:[c]);
+  for(const size of [12000,24000,40000,90000])assert.deepEqual(buildTxtSections(text,volumes,size),original(text,volumes,size));
+});
+
 test('TXT progress and note anchors survive reflow, repeated quotes and shifted content',()=>{
   const text='开场文字。\n甲段重复文字。\n乙段重复文字。\n结束。';
   const start=text.indexOf('重复文字',text.indexOf('乙段')),end=start+4,context=textAnchorContext(text,start,end);
@@ -40,6 +46,11 @@ test('TXT progress and note anchors survive reflow, repeated quotes and shifted 
   }
   assert.equal(resolveTextOffset(text,{offset:100000}),text.length);
   assert.equal(resolveTextOffset(text,{offset:-100}),0);
+});
+
+test('TXT repeated prose beyond the first 400 occurrences retains the late-book anchor',()=>{
+ const text=Array.from({length:1500},(_,i)=>`段落 ${i}：重复正文，阅读位置应保持。\n`).join(''),start=text.indexOf('重复正文',text.indexOf('段落 1400：')),anchor={offset:start,...textAnchorContext(text,start,start+14)};
+ assert.equal(resolveTextOffset('新增前言。\n'+text,anchor),start+6);
 });
 
 test('TXT marks preserve exact text, editable note IDs and search cues, including overlap',()=>{

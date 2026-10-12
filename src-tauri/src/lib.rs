@@ -2,6 +2,7 @@
 use tauri::menu::Menu;
 #[cfg(desktop)]
 use tauri::Manager;
+mod app_update;
 #[cfg(windows)]
 mod windows_icon;
 
@@ -32,10 +33,21 @@ pub fn run() {
         }
     }));
     builder
-        .invoke_handler(tauri::generate_handler![device_power_status])
+        .manage(app_update::UpdateDownload::default())
+        .invoke_handler(tauri::generate_handler![device_power_status,app_update::download_app_update,app_update::cancel_app_update,app_update::install_app_update])
+        .plugin(tauri::plugin::Builder::<tauri::Wry>::new("papery-update").setup(|_app,_api|{
+            #[cfg(target_os="android")]
+            {
+                use tauri::Manager;
+                let handle=_api.register_android_plugin("com.papery.reader","UpdateInstallerPlugin")?;
+                _app.manage(app_update::AndroidInstaller(handle));
+            }
+            Ok(())
+        }).build())
         .plugin(tauri_plugin_deep_link::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
+        .plugin(tauri_plugin_http::init())
         .plugin(tauri_plugin_opener::init())
         // 使用空菜单替换默认系统菜单栏（仅在桌面端生效）
         .setup(|app| {

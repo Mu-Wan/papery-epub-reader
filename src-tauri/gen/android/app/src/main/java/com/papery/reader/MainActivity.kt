@@ -2,6 +2,17 @@ package com.papery.reader
 
 import android.os.Bundle
 import android.os.PowerManager
+import android.os.Build
+import android.content.Intent
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.view.ViewGroup
+import android.view.Gravity
+import android.widget.LinearLayout
+import android.widget.TextView
+import android.widget.Button
+import android.widget.Toast
+import org.json.JSONObject
 import android.app.ActivityManager
 import android.webkit.WebView
 import android.webkit.JavascriptInterface
@@ -28,6 +39,12 @@ class MainActivity : TauriActivity() {
       volumePagingEnabled = enabled
     }
     @JavascriptInterface fun getPerformanceProfile(): String = "{\"lowMemory\":$lowMemory}"
+    @JavascriptInterface fun consumeRecoveryNotice(): Boolean {
+      val prefs = getSharedPreferences("reader-recovery", MODE_PRIVATE)
+      val pending = prefs.getBoolean("return-to-library", false)
+      if (pending) prefs.edit().putBoolean("return-to-library", false).apply()
+      return pending
+    }
   }
 
   override fun onCreate(savedInstanceState: Bundle?) {
@@ -38,6 +55,59 @@ class MainActivity : TauriActivity() {
   override fun onWebViewCreate(webView: WebView) {
     super.onWebViewCreate(webView)
     readerWebView = webView
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+      // Wry installs its client after this creation callback. Queue the wrapper
+      // until that setup finishes so both recovery and Tauri IPC remain active.
+      webView.post {
+      if (readerWebView !== webView) return@post
+      webView.webViewClient = ReaderRecoveryClient(webView.webViewClient) { failedView, detail ->
+        volumePagingEnabled = false
+        consumedKeys.clear()
+        readerWebView = null
+        getSharedPreferences("reader-recovery", MODE_PRIVATE).edit().putBoolean("return-to-library", true).commit()
+        val report = JSONObject().apply {
+          put("app", BuildConfig.VERSION_NAME)
+          put("device", "${Build.MANUFACTURER} ${Build.MODEL}")
+          put("android", Build.VERSION.RELEASE)
+          put("webview", WebView.getCurrentWebViewPackage()?.versionName ?: "unknown")
+          put("rendererCrashed", detail.didCrash())
+          put("time", System.currentTimeMillis())
+        }.toString(2)
+        (failedView.parent as? ViewGroup)?.removeView(failedView)
+        failedView.destroy()
+        val padding = (28 * resources.displayMetrics.density).toInt()
+        val recovery = LinearLayout(this).apply {
+          orientation = LinearLayout.VERTICAL
+          gravity = Gravity.CENTER
+          setPadding(padding, padding, padding, padding)
+          setBackgroundColor(android.graphics.Color.rgb(252, 251, 250))
+        }
+        recovery.addView(TextView(this).apply {
+          text = "阅读页面暂时中断\n书库和已保存的数据仍在，请返回书库后重试。"
+          textSize = 18f
+          gravity = Gravity.CENTER
+          setTextColor(android.graphics.Color.rgb(32, 33, 36))
+          setPadding(0, 0, 0, padding)
+        })
+        recovery.addView(Button(this).apply {
+          text = "返回书库"
+          setOnClickListener {
+            startActivity(Intent(this@MainActivity, RestartReaderActivity::class.java)
+              .putExtra("readerPid", android.os.Process.myPid())
+              .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+          }
+        })
+        recovery.addView(Button(this).apply {
+          text = "复制故障信息"
+          setOnClickListener {
+            (getSystemService(CLIPBOARD_SERVICE) as ClipboardManager).setPrimaryClip(ClipData.newPlainText("Papery 故障信息", report))
+            Toast.makeText(this@MainActivity, "故障信息已复制", Toast.LENGTH_SHORT).show()
+          }
+        })
+        setContentView(recovery)
+      }
+      }
+    }
     webView.addJavascriptInterface(ReaderBridge(), "PaperyReader")
     // The WebView fills the window. CSS applies these insets exactly once;
     // native view padding would otherwise add a second safe area.

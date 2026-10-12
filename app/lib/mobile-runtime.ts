@@ -3,8 +3,14 @@ type AndroidReaderBridge = {
   getWindowInsets:()=>string;
   setVolumePagingEnabled:(enabled:boolean)=>void;
   getPerformanceProfile?:()=>string;
+  consumeRecoveryNotice?:()=>boolean;
 };
 type ReaderWindow = Window & { PaperyReader?: AndroidReaderBridge };
+
+export function consumeReaderRecovery() {
+  try { return (window as ReaderWindow).PaperyReader?.consumeRecoveryNotice?.() === true; }
+  catch { return false; }
+}
 
 export function installMobileInsets() {
   const runtime=window as ReaderWindow;

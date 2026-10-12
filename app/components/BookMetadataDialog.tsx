@@ -4,6 +4,7 @@ import type { LibraryBook } from "./LibraryView";
 import { X } from "./PaperyIcons";
 import { useDialogFocus } from "./use-dialog-focus";
 import { readBookMetadata } from "../lib/book-cover";
+import { loadLocalBook } from "../lib/local-library";
 import { cleanAuthor } from "../lib/book-metadata";
 
 export function BookMetadataDialog({ book, onSave, onClose }: {
@@ -12,10 +13,12 @@ export function BookMetadataDialog({ book, onSave, onClose }: {
   const root = useDialogFocus<HTMLFormElement>(onClose), [title, setTitle] = useState(book.title), [author, setAuthor] = useState(cleanAuthor(book.author));
   const [year, setYear] = useState(book.publicationYear ? String(book.publicationYear) : ""), [busy, setBusy] = useState(false), [message, setMessage] = useState("");
   const recognize = async () => {
-    if (!book.blob || busy) return;
+    if (busy) return;
     setBusy(true); setMessage("");
     try {
-      const metadata = await readBookMetadata(book.blob, book.type, book.fileName);
+      const blob=book.blob||(await loadLocalBook(book.id))?.blob;
+      if(!blob)throw new Error("书籍文件缺失");
+      const metadata = await readBookMetadata(blob, book.type, book.fileName);
       if (metadata.author) setAuthor(metadata.author);
       if (metadata.publicationYear) setYear(String(metadata.publicationYear));
       setMessage(metadata.author ? "已识别，请核对后保存。" : "文件中未找到明确署名，请手动填写作者。");
@@ -35,6 +38,6 @@ export function BookMetadataDialog({ book, onSave, onClose }: {
     <label>书名<input value={title} onChange={event => setTitle(event.target.value)} maxLength={300} disabled={busy}/></label>
     <label>作者<input value={author} onChange={event => setAuthor(event.target.value)} maxLength={150} placeholder="作者未记录" disabled={busy}/></label>
     <label>出版年份<input value={year} onChange={event => setYear(event.target.value)} inputMode="numeric" maxLength={4} placeholder="未知时留空" disabled={busy}/></label>
-    <p role="status">{message}</p><footer><button className="uiButton" type="button" onClick={recognize} disabled={busy || !book.blob}>{busy ? "正在处理…" : "从文件识别"}</button><button className="uiButton primary" disabled={busy} type="submit">保存</button></footer>
+    <p role="status">{message}</p><footer><button className="uiButton" type="button" onClick={recognize} disabled={busy}>{busy ? "正在处理…" : "从文件识别"}</button><button className="uiButton primary" disabled={busy} type="submit">保存</button></footer>
   </form></>;
 }

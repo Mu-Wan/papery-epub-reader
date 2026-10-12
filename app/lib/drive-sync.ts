@@ -1,5 +1,5 @@
-import { exportLibraryBackup, importLibraryBackup, getDeviceId } from "./local-library";
-import { mergeSnapshots, validateSnapshot, type SyncSnapshot } from "./sync-merge";
+import { exportLibraryBackup, importLibraryBackup, getDeviceId, validateLibrarySnapshot } from "./local-library";
+import { mergeSnapshots, type SyncSnapshot } from "./sync-merge";
 import { UploadSessionExpiredError, uploadResumableBlob } from "./drive-upload";
 
 const API = "https://www.googleapis.com/drive/v3";
@@ -161,12 +161,12 @@ export function syncGoogleDrive(onStatus: (text: string) => void) {
     const snapshots: SyncSnapshot[] = [];
     for (const { file } of latest.values()) {
       const value = await (await request(`${API}/files/${encodeURIComponent(file.id)}?alt=media`)).json();
-      validateSnapshot(value);
+      validateLibrarySnapshot(value);
       snapshots.push(value);
     }
 
     const local = JSON.parse(await (await exportLibraryBackup()).text());
-    validateSnapshot(local);
+    validateLibrarySnapshot(local);
     snapshots.push(local);
 
     const merged = mergeSnapshots(snapshots);
@@ -177,7 +177,7 @@ export function syncGoogleDrive(onStatus: (text: string) => void) {
 
     // Re-read after network I/O so edits made while uploading remain on this device.
     const fresh = JSON.parse(await (await exportLibraryBackup()).text());
-    validateSnapshot(fresh);
+    validateLibrarySnapshot(fresh);
     const final = mergeSnapshots([merged, fresh]);
     await importLibraryBackup(new File([JSON.stringify(final)], "sync.json", { type: "application/json" }));
 

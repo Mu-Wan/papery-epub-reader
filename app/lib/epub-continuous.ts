@@ -1,6 +1,7 @@
 import { isScrollEnd } from "./reading-progress";
 import { createReadingScheduler } from "./reading-scheduler";
 import { createContinuousStyleResolver } from "./epub-scroll-layout";
+import { firstVisibleTextRange } from "./epub-reading-point";
 /* eslint-disable @typescript-eslint/no-explicit-any */
 // Foliate's navigation, CFI and annotations are shared by both reading modes.
 // This renderer keeps adjacent chapters in one scroll surface and balances every
@@ -100,7 +101,8 @@ export function createContinuousRenderer(): HTMLElement {
         const y = Math.max(2, Math.min(entry.height - 2, this.scroller.scrollTop - entry.element.offsetTop + 12));
         const x = Math.min((doc.defaultView?.innerWidth || 100) - 5, 24);
         const range = (doc as any).caretRangeFromPoint?.(x, y) as Range | undefined;
-        if (range && doc.body.contains(range.startContainer)) return range;
+        if (range?.startContainer.nodeType===3 && doc.body.contains(range.startContainer)) return range;
+        const visible=firstVisibleTextRange(doc,y);if(visible)return visible;
         const fallback = doc.createRange(); fallback.selectNodeContents(doc.body); fallback.collapse(true); return fallback;
       }
 
@@ -262,6 +264,10 @@ export function createContinuousRenderer(): HTMLElement {
           this.currentIndex = entry.index;
           await this.load(entry);
           if (this.closed) return;
+          // Measure the adjacent buffer before committing the target position.
+          // Its first load can otherwise shift the target into the previous chapter.
+          await Promise.all(this.entries.filter(item=>Math.abs(item.index-entry.index)===1&&this.sections[item.index].linear!=="no").map(item=>this.load(item)));
+          if(this.closed)return;
           const anchor = typeof resolved.anchor === "function" ? resolved.anchor(entry.doc) : resolved.anchor;
           const y = typeof anchor === "number" ? anchor * entry.height : anchor?.getBoundingClientRect?.().top || 0;
           this.scroller.scrollTop = entry.element.offsetTop + y;

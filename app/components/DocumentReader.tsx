@@ -1,5 +1,7 @@
 "use client";
 
+import { forwardReadingPoint,readingAnchorRange,paginatedReadingPoint } from "../lib/epub-reading-point";
+import { matchTxtChapters, type TxtChapterEntry } from "../lib/txt-chapters";
 import { continuousTouchPoint } from "../lib/epub-scroll-layout";
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
@@ -16,11 +18,13 @@ import { createSelectionCommitGuard } from "../lib/selection-commit";
 import { PDF_REFLOW_VERSION, validPdfReflowCache, type PdfReflowCache } from "../lib/pdf-reflow-cache";
 import { annotationColor, annotationPaint } from "../lib/annotation-color";
 import { readReaderSource as readSource } from "../lib/reader-source";
+import { readerFontCss } from "../lib/reader-fonts";
 import { createEpubBook, fingerprintBuffer } from "../lib/reader-resources.mjs";
 import { paperBackground } from "../lib/reader-paper";
 import { readingProgress, isScrollEnd, scrolledTxtPages } from "../lib/reading-progress";
 import { createReadingScheduler, pdfRenderPixelRatio } from "../lib/reading-scheduler";
 import { isLowMemoryDevice } from "../lib/mobile-runtime";
+import { epubNavigation,epubChapterIndex } from "../lib/epub-navigation";
 import { createEpubReferenceController, type EpubReferenceController, type EpubReferenceState } from "../lib/epub-references";
 import { EpubReferencePanel, EpubReferenceReturn } from "./EpubReferencePanel";
 
@@ -114,7 +118,9 @@ function resolveTextOffset(text:string,anchor:PortableTextAnchor){
   const quote=anchor.quote;
   if(!quote)return expected;
   if(text.slice(expected,expected+quote.length)===quote)return expected;
-  const candidates:number[]=[];let cursor=0;
+  const candidates:number[]=[];let cursor=Math.max(0,expected-8192);
+  while(candidates.length<400){const found=text.indexOf(quote,cursor);if(found<0||found>expected+8192)break;candidates.push(found);cursor=found+Math.max(1,quote.length)}
+  cursor=0;
   while(candidates.length<400){const found=text.indexOf(quote,cursor);if(found<0)break;candidates.push(found);cursor=found+Math.max(1,quote.length)}
   if(!candidates.length){
     const haystack=text.toLocaleLowerCase(),needle=quote.toLocaleLowerCase();cursor=0;
@@ -130,38 +136,19 @@ function resolveTextOffset(text:string,anchor:PortableTextAnchor){
 }
 
 const epubFontInstalls=new WeakMap<Document,Promise<void>>();
-let epubFontBuffer:Promise<ArrayBuffer>|null=null;
-let epubFontBlobUrl:string|null=null;
-function loadEpubFontBuffer(){return epubFontBuffer??=(fetch("/vendor/lxgw-wenkai.woff2").then(response=>{if(!response.ok)throw new Error("字体读取失败");return response.arrayBuffer()}))}
-/** Get a blob URL for the font so iframes can load it synchronously without network fetch. */
-function getEpubFontBlobUrl():Promise<string>{if(epubFontBlobUrl)return Promise.resolve(epubFontBlobUrl);return loadEpubFontBuffer().then(buffer=>{epubFontBlobUrl=URL.createObjectURL(new Blob([buffer],{type:"font/woff2"}));return epubFontBlobUrl}).catch(()=>"/vendor/lxgw-wenkai.woff2")}
-function epubFontStack(font:ReaderSettings["fontFamily"]){return font==="lxgw"?'"Papery LXGW WenKai", "LXGW WenKai", "霞鹜文楷", "Kaiti SC", serif':fontStack(font)}
-const epubFontUrl=typeof window!=="undefined"?new URL("/vendor/lxgw-wenkai.woff2",window.location.href).href:"/vendor/lxgw-wenkai.woff2";
-function preloadEpubFont(){const pre=document.createElement("link");pre.rel="preload";pre.as="font";pre.type="font/woff2";pre.crossOrigin="anonymous";pre.href=epubFontUrl;document.head.append(pre)}
+function epubFontStack(font:ReaderSettings["fontFamily"]){return fontStack(font)}
 /** Determine if a hex background is dark enough to require light text */
 function isDarkBg(hex:string){const c=hex.replace("#","");const r=parseInt(c.slice(0,2),16),g=parseInt(c.slice(2,4),16),b=parseInt(c.slice(4,6),16);return(r*299+g*587+b*114)/1000<100}
 function readerTextColor(pageColor:string){return isDarkBg(pageColor)?"#d6d3cb":"#302d27"}
 
 async function applyEpubDocumentFont(doc:Document,settings:ReaderSettings){
-  let install=epubFontInstalls.get(doc);
-  if(settings.fontFamily==="lxgw"&&!install){
-    // Register synchronously so the paginator's fonts.ready sees this face.
-    // A shared URL lets the browser reuse the same font resource across chapters.
-    const FontFaceCtor=(doc.defaultView as any)?.FontFace??FontFace;
-    const face=new FontFaceCtor("Papery LXGW WenKai",`url("${epubFontBlobUrl||epubFontUrl}") format("woff2")`,{style:"normal",weight:"100 900"});
-    doc.fonts.add(face);
-    const loading:Promise<void>=Promise.resolve(face.load()).then(()=>undefined);
-    install=loading;
-    epubFontInstalls.set(doc,loading);
-  }
   let style=doc.getElementById("papery-reader-font") as HTMLStyleElement|null;
   if(!style){style=doc.createElement("style");style.id="papery-reader-font";(doc.head||doc.documentElement).append(style)}
   const stack=epubFontStack(settings.fontFamily);
-  const fontUrl=epubFontBlobUrl||epubFontUrl;
   doc.documentElement.classList.add("papery-reader-document","papery-reader-typography");
   doc.body?.classList.add("papery-reader-body");
   style.textContent=`
-    @font-face{font-family:"Papery LXGW WenKai";font-style:normal;font-weight:100 900;font-display:swap;src:url("${fontUrl}") format("woff2")}
+    ${readerFontCss()}
     html.papery-reader-document.papery-reader-typography{color-scheme:${isDarkBg(settings.pageColor)?"dark":"light"}!important;background:${settings.pageColor} ${paperBackground(settings.paperTexture)}!important}
     html.papery-reader-document.papery-reader-typography body.papery-reader-body{background:transparent!important;color:${readerTextColor(settings.pageColor)}!important;font-family:${stack}!important;font-size:${settings.fontSize}px!important;line-height:${settings.lineHeight}!important;font-synthesis:none!important;scrollbar-width:none!important}
     html.papery-reader-document.papery-reader-typography body.papery-reader-body :is(p,h1,h2,h3,h4,h5,h6,main,article,section,div,span){background-color:transparent!important;color:inherit!important}
@@ -182,7 +169,11 @@ async function applyEpubDocumentFont(doc:Document,settings:ReaderSettings){
   frame?.style.setProperty("color-scheme",scheme);
   frame?.style.setProperty("background",settings.pageColor);
   doc.body?.style.setProperty("background","transparent","important");
-  if(install)await install.catch(()=>undefined);
+  if(settings.fontFamily==="lxgw"){
+    let install=epubFontInstalls.get(doc);
+    if(!install){install=doc.fonts.load(`${settings.fontSize}px "LXGW WenKai"`,doc.body?.textContent||" ").then(()=>undefined);epubFontInstalls.set(doc,install)}
+    await install.catch(()=>undefined);
+  }
 }
 
 function decodeTxt(buffer: ArrayBuffer) {
@@ -196,7 +187,7 @@ function decodeTxt(buffer: ArrayBuffer) {
 }
 
 type TxtParagraph = { text: string; start: number; end: number };
-type TxtChapter = { title: string; offset: number; index: number };
+type TxtChapter = { title: string; offset: number; index: number; level?:number };
 type TxtSection = { start: number; end: number; index: number };
 
 function parseTxt(text: string) {
@@ -206,7 +197,7 @@ function parseTxt(text: string) {
   for (const match of normalized.matchAll(/[^\n]*/g)) {
     const raw=match[0],offset=match.index||0;
     const value = raw.trim();
-    if (value && (chapterPattern.test(value) || (value.length < 28 && /[章节卷篇]$/.test(value)))) {
+    if (value && value.length<=120 && (chapterPattern.test(value) || (value.length < 28 && /[章节卷篇]$/.test(value)))) {
       chapters.push({ title: value, offset: offset + Math.max(0, raw.indexOf(value)), index: chapters.length });
     }
   }
@@ -227,10 +218,11 @@ function paragraphsForRange(text:string,start:number,end:number):TxtParagraph[] 
 function buildTxtSections(text:string,chapters:TxtChapter[],targetSize=40000):TxtSection[]{
   if(!text.length)return[{start:0,end:0,index:0}];
   const chapterBounds=chapters.map(chapter=>chapter.offset).filter(offset=>offset>0&&offset<text.length);
-  const sections:TxtSection[]=[];let start=0;
+  const sections:TxtSection[]=[];let start=0,boundIndex=0;
   while(start<text.length){
     const target=Math.min(text.length,start+targetSize);
-    let end=chapterBounds.filter(offset=>offset>start+8000&&offset<=target).at(-1)||0;
+    while(boundIndex<chapterBounds.length&&chapterBounds[boundIndex]<=target)boundIndex++;
+    const candidate=chapterBounds[boundIndex-1]||0;let end=candidate>start+8000?candidate:0;
     if(!end){end=text.lastIndexOf("\n",target);if(end<=start+8000)end=text.indexOf("\n",target)}
     if(end<=start||end>text.length)end=Math.min(text.length,target);
     sections.push({start,end,index:sections.length});start=end;
@@ -269,7 +261,11 @@ function TxtReader({source,sourceBlob,bookId,settings,initialLocation,annotation
   const [scrollTail,setScrollTail]=useState<{index:number;end:number}|null>(null);
   const [searchTarget,setSearchTarget]=useState<{start:number;end:number;nonce:number}|null>(null);
   const [viewport,setViewport]=useState({width:900,height:650});
-  const parsed=useMemo(()=>parseTxt(text),[text]);
+  const baseParsed=useMemo(()=>parseTxt(text),[text]);
+  const [chapterOverride,setChapterOverride]=useState<{text:string;rule:string;chapters:TxtChapterEntry[]}|null>(null),[chapterError,setChapterError]=useState("");
+  const ruleKey=JSON.stringify(settings.txtChapterRule||null);
+  const parsed=useMemo(()=>chapterOverride?.text===text&&chapterOverride.rule===ruleKey?{...baseParsed,chapters:chapterOverride.chapters}:baseParsed,[baseParsed,chapterOverride,text,ruleKey]);
+  useEffect(()=>{if(!text||plainTextHeadings||!settings.txtChapterRule||settings.txtChapterRule.mode==="auto")return;const controller=new AbortController();void matchTxtChapters(baseParsed.normalized,settings.txtChapterRule,controller.signal).then(chapters=>{if(controller.signal.aborted)return;if(!chapters.length)throw new Error("本书未匹配到自定义章节，暂时使用自动识别");jumpRequest.current=jumpRequest.current||{offset:offsetRef.current,cue:false,completed:lastLocation.current?.progress===100};setChapterOverride({text,rule:ruleKey,chapters});setChapterError("")}).catch(error=>{if(!controller.signal.aborted)setChapterError(error instanceof Error?error.message:"分章规则无法使用")});return()=>controller.abort()},[text,ruleKey,baseParsed.normalized,settings.txtChapterRule,plainTextHeadings]);
   const sections=useMemo(()=>buildTxtSections(parsed.normalized,parsed.chapters),[parsed.normalized,parsed.chapters]);
   const initialOffset=useMemo(()=>resolveTextOffset(parsed.normalized,parseLocator<PortableTextAnchor>(initialLocation)||{}),[parsed.normalized,initialLocation]);
   const sectionForOffset=useCallback((offset:number)=>{let low=0,high=sections.length-1,found=0;while(low<=high){const middle=(low+high)>>1;if(sections[middle].start<=offset){found=middle;low=middle+1}else high=middle-1}return Math.min(sections.length-1,found)},[sections]);
@@ -291,17 +287,17 @@ function TxtReader({source,sourceBlob,bookId,settings,initialLocation,annotation
   const pageGap=effectiveSpread==="double"?28:24,logicalPageWidth=effectiveSpread==="double"?Math.max(280,(viewport.width-28)/2):viewport.width;
   const horizontalPadding=logicalPageWidth*Math.min(30,Math.max(5,settings.horizontalMargin))/100,verticalPadding=viewport.height*Math.min(18,Math.max(0,settings.verticalMargin))/100;
   const usableWidth=Math.max(180,logicalPageWidth-horizontalPadding*2),usableHeight=Math.max(180,viewport.height-verticalPadding*2),columnGap=horizontalPadding*2+pageGap,columnStride=usableWidth+columnGap;
-  const paginationKey=useMemo(()=>sourceFingerprint?JSON.stringify([2,sourceFingerprint,navigator.userAgent,settings.flow,settings.fontFamily,settings.fontSize,settings.lineHeight,settings.paragraphSpacing,usableWidth,usableHeight,columnGap,plainTextHeadings]):"",[sourceFingerprint,settings.flow,settings.fontFamily,settings.fontSize,settings.lineHeight,settings.paragraphSpacing,usableWidth,usableHeight,columnGap,plainTextHeadings]);
+  const paginationKey=useMemo(()=>sourceFingerprint?JSON.stringify([3,sourceFingerprint,navigator.userAgent,settings.flow,settings.fontFamily,settings.fontSize,settings.lineHeight,settings.paragraphSpacing,usableWidth,usableHeight,columnGap,plainTextHeadings,ruleKey]):"",[sourceFingerprint,settings.flow,settings.fontFamily,settings.fontSize,settings.lineHeight,settings.paragraphSpacing,usableWidth,usableHeight,columnGap,plainTextHeadings,ruleKey]);
   const [pagination,setPagination]=useState<{key:string;counts:number[]}|null>(null);
   const paginationCounts=pagination?.key===paginationKey?pagination.counts:null;
 
   useEffect(()=>{if(directText!==undefined)return;let cancelled=false;readSource(source,sourceBlob).then(buffer=>{if(!cancelled){setText(decodeTxt(buffer));void fingerprintBuffer(buffer).catch(()=>`uncached:${Date.now()}`).then(value=>{if(!cancelled)setSourceFingerprint(value)})}}).catch(reason=>{if(!cancelled)setError(reason instanceof Error?reason.message:"无法解析 TXT")}).finally(()=>{if(!cancelled)setLoading(false)});return()=>{cancelled=true}},[source,sourceBlob,directText]);
   useEffect(()=>()=>{if(scrollTimer.current!==null)window.clearTimeout(scrollTimer.current);if(searchTimer.current!==null)window.clearTimeout(searchTimer.current)},[]);
   useLayoutEffect(()=>{if(!text||initialized.current)return;initialized.current=true;offsetRef.current=initialOffset;jumpRequest.current={offset:initialOffset,cue:false,completed:parseLocator<PortableTextAnchor>(initialLocation)?.completed===true};setSectionIndex(sectionForOffset(initialOffset))},[text,initialOffset,sectionForOffset,initialLocation]);
-  useEffect(()=>{if(text)onToc(parsed.chapters.map(chapter=>({id:`txt-${chapter.index}`,label:chapter.title,level:0,locator:JSON.stringify({type:"txt",offset:chapter.offset})})))},[text,parsed.chapters,onToc]);
+  useEffect(()=>{if(text)onToc(parsed.chapters.map(chapter=>({id:`txt-${chapter.index}`,label:chapter.title,level:chapter.level||0,locator:JSON.stringify({type:"txt",offset:chapter.offset})})))},[text,parsed.chapters,onToc]);
   useEffect(()=>{const element=host.current;if(!element)return;const update=()=>{const width=Math.max(320,element.clientWidth),height=Math.max(320,element.clientHeight);setViewport(current=>current.width===width&&current.height===height?current:{width,height})};const observer=new ResizeObserver(update);observer.observe(element);update();return()=>observer.disconnect()},[loading]);
 
-  useEffect(()=>{if(!text||!document.fonts)return;let cancelled=false;document.fonts.load(`${settings.fontSize}px ${fontStack(settings.fontFamily)}`).then(()=>{if(!cancelled)setJumpEpoch(value=>value+1)}).catch(()=>{});return()=>{cancelled=true}},[text,settings.fontFamily,settings.fontSize]);
+  useEffect(()=>{if(!text||!document.fonts)return;let cancelled=false;document.fonts.load(`${settings.fontSize}px ${fontStack(settings.fontFamily)}`,parsed.normalized.slice(rangeStart,rangeEnd)).then(()=>{if(!cancelled)setJumpEpoch(value=>value+1)}).catch(()=>{});return()=>{cancelled=true}},[text,settings.fontFamily,settings.fontSize,parsed.normalized,rangeStart,rangeEnd]);
 
   // Measure exactly the same CSS columns as the reader, one bounded section at
   // a time. Never guess global pages from character counts. Reopening the same
@@ -317,7 +313,9 @@ function TxtReader({source,sourceBlob,bookId,settings,initialLocation,annotation
       if(document.fonts){await document.fonts.load(`${settings.fontSize}px ${fontStack(settings.fontFamily)}`).catch(()=>{});await document.fonts.ready}
       if(cancelled||!host.current||!content.current)return;
       holder=document.createElement("div");holder.setAttribute("aria-hidden","true");holder.inert=true;
-      holder.style.cssText="position:fixed;left:-100000px;top:0;visibility:hidden;pointer-events:none;contain:layout style paint;";
+      // Invisible measurement stays near the viewport: huge offscreen coordinates
+      // can inflate compositor bounds on Android while CSS columns are laid out.
+      holder.style.cssText="position:fixed;left:0;top:0;visibility:hidden;pointer-events:none;contain:layout style paint;";
       holder.className=`flow-${settings.flow}`;
       holder.style.width=`${usableWidth}px`;holder.style.height=`${usableHeight}px`;
       measure=content.current.cloneNode(false) as HTMLElement;
@@ -337,9 +335,13 @@ function TxtReader({source,sourceBlob,bookId,settings,initialLocation,annotation
         timer=window.setTimeout(run,typeof window.requestIdleCallback==="function"?160:32);
         if(typeof window.requestIdleCallback==="function")idle=window.requestIdleCallback(deadline=>{if(deadline.didTimeout||deadline.timeRemaining()>=8)run()},{timeout:160});
       };
-      const measureNext=()=>{
+      const measureNext=async()=>{
         if(cancelled||!measure)return;
         const section=sections[index];
+        // Every measured section uses its real glyph set. Rare-character shards
+        // must settle before their widths contribute to the saved page index.
+        await document.fonts?.load(`${settings.fontSize}px ${fontStack(settings.fontFamily)}`,parsed.normalized.slice(section.start,section.end)).catch(()=>{});
+        if(cancelled||!measure)return;
         measure.innerHTML=paragraphsForRange(parsed.normalized,section.start,section.end).map(paragraph=>{const tag=!plainTextHeadings&&chapterOffsets.has(paragraph.start)?"h2":"p";return `<${tag} data-txt-start="${paragraph.start}">${escapeHtml(paragraph.text)}</${tag}>`}).join("");
         counts[index]=settings.flow==="paginated"?Math.max(1,Math.round((measure.scrollWidth+columnGap)/Math.max(1,columnStride))):Math.max(1,measure.getBoundingClientRect().height);
         // Publish only when the current page's prefix is known; intermediate
@@ -384,7 +386,7 @@ function TxtReader({source,sourceBlob,bookId,settings,initialLocation,annotation
     return undefined;
   },[settings.flow,rangeStart,rangeEnd,paragraphs,pageForOffset,horizontalPadding,verticalPadding,rangeAtOffset]);
   const chapterForOffset=useCallback((offset:number)=>{let current=parsed.chapters[0];for(const chapter of parsed.chapters){if(chapter.offset<=offset)current=chapter;else break}return current},[parsed.chapters]);
-  const reportLocation=useCallback((explicitOffset?:number)=>{if(loading||!text||!initialized.current||reflowing.current)return;const offset=Math.min(parsed.normalized.length,Math.max(0,explicitOffset??visibleOffset()??offsetRef.current));offsetRef.current=offset;const chapter=chapterForOffset(offset);
+  const reportLocation=useCallback((explicitOffset?:number)=>{if(loading||!text||!initialized.current||reflowing.current||jumpRequest.current)return;const offset=Math.min(parsed.normalized.length,Math.max(0,explicitOffset??visibleOffset()??offsetRef.current));offsetRef.current=offset;const chapter=chapterForOffset(offset);
     const paginated=settings.flow==="paginated",prefix=paginationCounts?.slice(0,sectionIndex),container=host.current;
     const scrollPages=scrolledTxtPages(paginationCounts||new Array(sections.length).fill(0),renderStart,container?.scrollTop||0,viewport.height,verticalPadding);
     const pagePending=paginated?(!prefix||prefix.some(value=>!value)):scrollPages.pagePending;
@@ -448,11 +450,11 @@ function TxtReader({source,sourceBlob,bookId,settings,initialLocation,annotation
         reportLocation(offset);
       },70);
     }}>
+    {chapterError&&settings.txtChapterRule?.mode!=="auto"&&<div className="txtChapterError" role="status">{chapterError}</div>}
     <article ref={content} className="txtFlowContent" style={contentStyle as React.CSSProperties} dangerouslySetInnerHTML={txtContent}/>
   </div>;
 }
 
-function flattenToc(items:any[],level=0):TocItem[]{return (items||[]).flatMap((item:any,index:number)=>[{id:item.id||`${level}-${index}`,label:item.label?.trim()||"未命名章节",level,locator:JSON.stringify({type:"epub",href:item.href})},...flattenToc(item.subitems||item.children||[],level+1)]);}
 
 function epubMargins(settings:ReaderSettings){
   const horizontal=Math.min(30,Math.max(2,settings.horizontalMargin));
@@ -465,9 +467,9 @@ function EpubReader(props:Props){
   return <FoliateEpubReader key={props.settings.flow} {...props} initialLocation={locator} onLocation={onLocation}/>;
 }
 
-function foliateStyles(settings:ReaderSettings,fontUrl:string){
+function foliateStyles(settings:ReaderSettings){
   return `
-    @font-face{font-family:"Papery LXGW WenKai";font-style:normal;font-weight:100 900;font-display:swap;src:url("${fontUrl}") format("woff2")}
+    ${readerFontCss()}
     :root{--theme-bg-color:${settings.pageColor};color-scheme:${isDarkBg(settings.pageColor)?"dark":"light"}!important;background:${settings.pageColor} ${paperBackground(settings.paperTexture)}!important;color:${readerTextColor(settings.pageColor)}!important;scrollbar-width:none!important}
     body{background:transparent!important;color:${readerTextColor(settings.pageColor)}!important;scrollbar-width:none!important}
     body :is(p,h1,h2,h3,h4,h5,h6,main,article,section,div,span){background-color:transparent!important;color:inherit!important}
@@ -482,11 +484,12 @@ function foliateStyles(settings:ReaderSettings,fontUrl:string){
 }
 
 function foliateLocator(value?:string){
-  const parsed=parseLocator<{cfi?:string;href?:string;fraction?:number}>(value);
+  const parsed=parseLocator<{cfi?:string;href?:string;fraction?:number;quote?:string}>(value);
+  if(parsed?.cfi?.includes(",")&&!parsed.quote&&Number.isFinite(parsed.fraction))return {fraction:parsed.fraction};
   return parsed?.cfi||parsed?.href||(typeof parsed?.fraction==="number"?{fraction:parsed.fraction}:undefined);
 }
 
-function applyFoliateLayout(view:any,host:HTMLElement|null,settings:ReaderSettings,fontUrl:string,updateStyles=true){
+function applyFoliateLayout(view:any,host:HTMLElement|null,settings:ReaderSettings,updateStyles=true){
   if(!view||!host)return;
   const width=Math.max(320,host.clientWidth),double=settings.flow==="paginated"&&settings.spread==="double"&&width>=700;
   if(view.renderer.getAttribute("flow")!==settings.flow)view.renderer.setAttribute("flow",settings.flow);
@@ -496,7 +499,7 @@ function applyFoliateLayout(view:any,host:HTMLElement|null,settings:ReaderSettin
   const maxInline=double?Math.ceil(width/2):width;
   const attributes={gap:`${gapPercent}%`,edge:"0px","max-column-count":double?"2":"1","max-inline-size":`${maxInline}px`};
   for(const [name,value] of Object.entries(attributes))if(view.renderer.getAttribute(name)!==value)view.renderer.setAttribute(name,value);
-  if(updateStyles){const styles=foliateStyles(settings,fontUrl);if(view.__paperyStyles!==styles){view.renderer.setStyles(styles);view.__paperyStyles=styles}}
+  if(updateStyles){const styles=foliateStyles(settings);if(view.__paperyStyles!==styles){view.renderer.setStyles(styles);view.__paperyStyles=styles}}
 }
 
 function FoliateEpubReader({source,sourceBlob,bookId,settings,initialLocation,annotations,onApi,onLocation,onToc,onSelection,onAnnotation,onEdgeCue,onToggleUi}:Props){
@@ -522,21 +525,17 @@ function FoliateEpubReader({source,sourceBlob,bookId,settings,initialLocation,an
     let wheelPoller:number|undefined;
     let onPaginatorLoad:((event:any)=>void)|undefined;
     let hostWheel:((e:WheelEvent)=>void)|undefined;
-    let fontBlobUrl="/vendor/lxgw-wenkai.woff2";
     let markReady:()=>void;
     const readySignal=new Promise<void>(resolve=>{markReady=resolve});
     (async()=>{
       console.log("[Papery] EPUB init: start");
-      const [fontUrl,{Overlayer},book]=await withTimeout(Promise.all([settingsRef.current.fontFamily==="lxgw"?getEpubFontBlobUrl():Promise.resolve(epubFontUrl),import("foliate-js/overlayer.js"),createEpubBook(source,sourceBlob),import("foliate-js/view.js")]),20000,"加载 EPUB 模块与文件");
-      fontBlobUrl=fontUrl;
+      const [{Overlayer},book]=await withTimeout(Promise.all([import("foliate-js/overlayer.js"),createEpubBook(source,sourceBlob),import("foliate-js/view.js")]),20000,"加载 EPUB 模块与文件");
       console.log("[Papery] EPUB init: archive ready");
-      if(settingsRef.current.fontFamily==="lxgw")loadEpubFontBuffer().catch(()=>undefined);
       console.log("[Papery] EPUB init: view.js imported");
       if(cancelled||!host.current)return;
       view=document.createElement("foliate-view") as any;
       view.className="foliateView";
       host.current.append(view);viewRef.current=view;
-      if(settingsRef.current.fontFamily==="lxgw")preloadEpubFont();
       const continuous=settingsRef.current.flow==="scrolled"?(await import("../lib/epub-continuous")).createContinuousRenderer():undefined;
       await withTimeout(view.open(book,{renderer:continuous}),20000,"解析 EPUB 结构");
       console.log("[Papery] EPUB init: book opened, sections=",view.book?.sections?.length);
@@ -547,9 +546,9 @@ function FoliateEpubReader({source,sourceBlob,bookId,settings,initialLocation,an
       renderer.setAttribute("flow",settingsRef.current.flow);
       renderer.setAttribute("margin","0px");
       renderer.setAttribute("max-block-size","9999px");
-      applyFoliateLayout(view,host.current,settingsRef.current,fontBlobUrl);
+      applyFoliateLayout(view,host.current,settingsRef.current);
 
-      const rawToc=flattenToc(view.book.toc||[]);
+      const rawToc=epubNavigation(view.book.toc||[],view.book.sections||[]);
       const fractions=view.getSectionFractions?.()||[];
       const toc=rawToc;
       tocRef.current=toc;callbacksRef.current.onToc(toc);
@@ -589,7 +588,11 @@ function FoliateEpubReader({source,sourceBlob,bookId,settings,initialLocation,an
       // compatibility poll only on desktops, where this fallback is needed.
       if(!/Android|iPhone|iPad|iPod/i.test(navigator.userAgent))wheelPoller=window.setInterval(()=>{try{handleWheelDoc(view?.renderer?.getContents?.()?.[0]?.doc)}catch{}},120);
       const onOverlay=(event:any)=>queueMicrotask(()=>addVisibleAnnotations(event.detail.index));
-      const onRelocate=(event:any)=>{try{const detail=event.detail||{},cfi=detail.cfi;if(cancelled||!cfi||references?.isTransient())return;markReady();const fraction=Number.isFinite(detail.fraction)?detail.fraction:0,atEnd=typeof renderer.atEnd==="boolean"?renderer.atEnd:renderer.tagName==="FOLIATE-FXL"&&renderer.index===view.book.sections.findLastIndex((section:any)=>section.linear!=="no"),locator=JSON.stringify({type:"epub",cfi,fraction});currentLocator.current=locator;const total=Math.max(1,detail.location?.total||view.book.sections?.length||1),page=Math.min(total,Math.max(1,(detail.location?.current||0)+1));const chapterTitle=detail.tocItem?.label||"正文";let chapterIndex=tocRef.current.findIndex(item=>item.label===chapterTitle);if(chapterIndex<0)chapterIndex=0;callbacksRef.current.onLocation({locator,progress:readingProgress(fraction,atEnd),page,totalPages:total,chapterTitle,chapterIndex,chapterCount:Math.max(1,tocRef.current.length)})}catch(e){console.warn("[Papery] relocate error:",e)}};
+      let opening=true,openingDetail:any;
+      const reportRelocate=(detail:any)=>{const range=detail.range,entry=renderer.getContents?.().find((item:any)=>item.doc===range?.startContainer?.ownerDocument);const point=range&&entry&&settingsRef.current.flow==="paginated"&&host.current?paginatedReadingPoint(entry.doc,host.current.getBoundingClientRect()):undefined;const cfi=range&&entry?view.getCFI(entry.index,point||forwardReadingPoint(range)):detail.cfi;
+        const fraction=Number.isFinite(detail.fraction)?detail.fraction:0,atEnd=typeof renderer.atEnd==="boolean"?renderer.atEnd:renderer.tagName==="FOLIATE-FXL"&&renderer.index===view.book.sections.findLastIndex((section:any)=>section.linear!=="no"),locator=JSON.stringify({type:"epub",cfi,fraction});currentLocator.current=locator;const total=Math.max(1,detail.location?.total||view.book.sections?.length||1),page=Math.min(total,Math.max(1,(detail.location?.current||0)+1)),tocItem=entry&&point?view.getProgressOf?.(entry.index,point)?.tocItem||detail.tocItem:detail.tocItem,section=view.book.sections[entry?.index??detail.section?.current],chapterIndex=epubChapterIndex(tocRef.current,tocItem,section?.href||section?.id),chapterTitle=tocRef.current[chapterIndex]?.label||tocItem?.label||"正文";callbacksRef.current.onLocation({locator,progress:readingProgress(fraction,atEnd),page,totalPages:total,chapterTitle,chapterIndex,chapterCount:Math.max(1,tocRef.current.length)})};
+      const onRelocate=(event:any)=>{try{const detail=event.detail||{};if(cancelled||!detail.cfi||references?.isTransient())return;markReady();if(opening){openingDetail=detail;return;}reportRelocate(detail)}catch(error){console.warn("[Papery] relocate error:",error)}};
+      const navigatePoint=async(target:any)=>{const resolved=view.resolveNavigation(target);if(!resolved)return undefined;const navigationTarget=typeof target==="string"&&target.startsWith("epubcfi(")&&typeof resolved.anchor==="function"?{...resolved,anchor:(doc:Document)=>readingAnchorRange(resolved.anchor(doc))}:resolved;await renderer.goTo(navigationTarget);view.history?.pushState(target);return resolved;};
       const documentCleanups=new Map<Document,()=>void>();
       renderer.addEventListener("unload",(event:any)=>{const doc=event.detail.doc;documentCleanups.get(doc)?.();documentCleanups.delete(doc)});
       renderer.addEventListener("reader-error",(event:any)=>{if(!cancelled){setError(event.detail.error?.message||"章节读取失败");setStatus("error")}});
@@ -627,26 +630,23 @@ function FoliateEpubReader({source,sourceBlob,bookId,settings,initialLocation,an
       hostWheel=(e:WheelEvent)=>{if(settingsRef.current.flow!=="paginated"||e.ctrlKey||Math.abs(e.deltaY)<14)return;e.preventDefault();if(wheelLocked)return;e.preventDefault();wheelLocked=true;void safeNavigate(e.deltaY>0?"next":"prev").finally(()=>window.setTimeout(()=>{wheelLocked=false},150));window.setTimeout(()=>{wheelLocked=false},800)};
       if(settingsRef.current.flow==="paginated")host.current?.addEventListener("wheel",hostWheel,{passive:false});
 
-      // Initialize the view - use relocate event as the primary ready signal
       const target=foliateLocator(currentLocator.current);
-      console.log("[Papery] EPUB init: calling view.init, target=",target);
-      // Fire init but don't block on it - the relocate event will signal readiness
-      view.init({lastLocation:target,showTextStart:true}).catch((e:any)=>{console.warn("[Papery] view.init error (non-fatal):",e);void view.next().catch(()=>undefined)});
-      // Wait for the first relocate event (content actually displayed) with timeout fallback
+      await withTimeout((async()=>{if(typeof target==="string"&&target.startsWith("epubcfi(")){const resolved=await navigatePoint(target);if(!resolved){const fallback=parseLocator<{fraction?:number}>(currentLocator.current)?.fraction;if(typeof fallback!=="number")throw new Error("保存的阅读位置无法定位，请重新打开书籍");await view.goToFraction(fallback)}}else await view.init({lastLocation:target,showTextStart:true});
+        for(const item of renderer.getContents?.()||[])await item.doc?.fonts?.ready;
+        if(typeof target==="string"&&target.startsWith("epubcfi(")&&view.resolveNavigation(target))await navigatePoint(target);
+      })(),20000,"恢复阅读位置");
       await Promise.race([readySignal,new Promise(resolve=>setTimeout(resolve,8000))]);
-      console.log("[Papery] EPUB init: content ready");
-      if(cancelled)return;
-      setStatus("ready");
+      if(cancelled)return;opening=false;if(openingDetail)reportRelocate(openingDetail);setStatus("ready");
       const findQuote=async(quote:string,preferredIndex?:number,prefix?:string,suffix?:string)=>{const candidates:{cfi:string;index:number;score:number}[]=[];for await(const item of view.search({query:quote})){if(item==="done")break;for(const match of item?.subitems||[]){if(!match?.cfi)continue;let index=-1;try{index=view.resolveNavigation(match.cfi)?.index??-1}catch{}const pre=String(match.excerpt?.pre||""),post=String(match.excerpt?.post||"");candidates.push({cfi:match.cfi,index,score:(index===preferredIndex?1000000:0)+(prefix?matchingPrefix(prefix,pre)*1000:0)+(suffix?matchingSuffix(suffix,post)*1000:0)})}}view.clearSearch();return candidates.sort((a,b)=>b.score-a.score)[0]?.cfi||null};
       const showCue=async(cfi:string,annotation?:ReaderAnnotation)=>{await new Promise(resolve=>requestAnimationFrame(()=>resolve(undefined)));cueAnnotation.current=annotation?{cfi,id:annotation.id}:null;await view.addAnnotation({value:cfi,style:"highlight",color:"#ffad33",id:"papery-cue-target"});if(searchCueTimer.current!==null)window.clearTimeout(searchCueTimer.current);searchCueTimer.current=window.setTimeout(()=>{searchCueTimer.current=null;void view.deleteAnnotation({value:cfi});const current=annotation?annotationsRef.current.find(item=>item.id===annotation.id):undefined;cueAnnotation.current=null;if(current&&current.style!=="bookmark")void view.addAnnotation({value:cfi,style:current.style,color:current.color,id:current.id})},6500)};
-      const goTo=async(locator:string)=>{const parsed=parseLocator<{cfi?:string;href?:string;fraction?:number;search?:boolean;anchor?:boolean;annotationId?:string;quote?:string;prefix?:string;suffix?:string;sectionIndex?:number}>(locator),fallback=foliateLocator(locator);if(fallback==null)return;const annotation=annotationsRef.current.find(item=>item.id===parsed?.annotationId||item.locator===locator||(parsed?.cfi&&parseLocator<{cfi?:string}>(item.locator)?.cfi===parsed.cfi));let cfi=parsed?.cfi;if(parsed?.anchor&&parsed.quote){let preferred=parsed.sectionIndex;try{preferred??=parsed.cfi?view.resolveNavigation(parsed.cfi)?.index:undefined}catch{}cfi=await findQuote(parsed.quote,preferred,parsed.prefix,parsed.suffix)||cfi}const resolvedTarget=cfi||fallback,resolved=await view.goTo(resolvedTarget);if(!resolved)return;if((parsed?.search||parsed?.anchor)&&cfi)await showCue(cfi,annotation);else if(annotation&&annotation.style!=="bookmark"&&cfi){await new Promise(resolve=>requestAnimationFrame(()=>resolve(undefined)));await view.addAnnotation({value:cfi,style:annotation.style,color:annotation.color,id:annotation.id})}};
+      const goTo=async(locator:string)=>{const parsed=parseLocator<{cfi?:string;href?:string;fraction?:number;search?:boolean;anchor?:boolean;annotationId?:string;quote?:string;prefix?:string;suffix?:string;sectionIndex?:number}>(locator),fallback=foliateLocator(locator);if(fallback==null)return;const annotation=annotationsRef.current.find(item=>item.id===parsed?.annotationId||item.locator===locator||(parsed?.cfi&&parseLocator<{cfi?:string}>(item.locator)?.cfi===parsed.cfi));let cfi=parsed?.cfi;if(parsed?.anchor&&parsed.quote){let preferred=parsed.sectionIndex;try{preferred??=parsed.cfi?view.resolveNavigation(parsed.cfi)?.index:undefined}catch{}cfi=await findQuote(parsed.quote,preferred,parsed.prefix,parsed.suffix)||cfi}const resolvedTarget=parsed?.cfi?.includes(",")&&!parsed.quote&&Number.isFinite(parsed.fraction)?{fraction:parsed.fraction}:cfi||fallback,resolved=await navigatePoint(resolvedTarget);if(!resolved)return;if((parsed?.search||parsed?.anchor)&&cfi)await showCue(cfi,annotation);else if(annotation&&annotation.style!=="bookmark"&&cfi){await new Promise(resolve=>requestAnimationFrame(()=>resolve(undefined)));await view.addAnnotation({value:cfi,style:annotation.style,color:annotation.color,id:annotation.id})}};
       const search=async(query:string):Promise<ReaderSearchResult[]>=>{const needle=query.trim();if(!needle)return[];const results:ReaderSearchResult[]=[];for await(const item of view.search({query:needle})){if(item==="done"||!item?.subitems)continue;for(const match of item.subitems){if(results.length>=100)break;let sectionIndex=0;try{sectionIndex=view.resolveNavigation(match.cfi)?.index??0}catch{}const excerpt=match.excerpt?.pre+match.excerpt?.match+match.excerpt?.post||String(match.excerpt||"").replace(/\s+/g," ");results.push({id:`foliate-search-${results.length}`,label:item.label||"正文",excerpt,locator:JSON.stringify({type:"epub",cfi:match.cfi,quote:needle,prefix:String(match.excerpt?.pre||"").slice(-48),suffix:String(match.excerpt?.post||"").slice(0,48),sectionIndex,search:true}),page:Math.max(1,sectionIndex+1)})}if(results.length>=100)break}return results};
       onApi({next:()=>{void safeNavigate("next")},prev:()=>{void safeNavigate("prev")},goTo:(locator:string)=>{references?.resumeReading();navigation=navigation.then(()=>cancelled?undefined:goTo(locator)).catch(reason=>console.warn("[Papery] jump failed",reason));},search});
     })().catch(reason=>{if(!cancelled){console.error("[Papery] EPUB init error:",reason);setError(reason instanceof Error?reason.message:"EPUB 分页器初始化失败");setStatus("error")}});
     return()=>{view?.renderer?.flushLocation?.();cancelled=true;references?.destroy();setReferenceController(previous=>previous===references?null:previous);initGuard.current=false;onApi(null);callbacksRef.current.onEdgeCue?.(null);activeDocumentCleanup?.();if(wheelPoller!==undefined)window.clearInterval(wheelPoller);if(onPaginatorLoad)try{view?.renderer?.removeEventListener?.("load",onPaginatorLoad)}catch{}if(hostWheel)host.current?.removeEventListener("wheel",hostWheel);if(searchCueTimer.current!==null)window.clearTimeout(searchCueTimer.current);try{view?.close?.();view?.book?.destroy?.();view?.remove?.()}catch{}if(viewRef.current===view)viewRef.current=null};
   },[source,sourceBlob,bookId,onApi,selectionCommit]);
 
-  useEffect(()=>{const view=viewRef.current,element=host.current;if(!view||!element||status!=="ready")return;(settings.fontFamily==="lxgw"?getEpubFontBlobUrl():Promise.resolve(epubFontUrl)).then(fontUrl=>{applyFoliateLayout(view,element,settings,fontUrl);for(const item of view.renderer.getContents?.()||[])if(item.doc)void applyEpubDocumentFont(item.doc,settings)});let frame=0,lastWidth=element.clientWidth;const observer=new ResizeObserver(()=>{const width=element.clientWidth;if(Math.abs(width-lastWidth)<1)return;lastWidth=width;cancelAnimationFrame(frame);frame=requestAnimationFrame(()=>(settings.fontFamily==="lxgw"?getEpubFontBlobUrl():Promise.resolve(epubFontUrl)).then(fontUrl=>applyFoliateLayout(view,element,settings,fontUrl,false)))});observer.observe(element);return()=>{cancelAnimationFrame(frame);observer.disconnect()}},[settings,status]);
+  useEffect(()=>{const view=viewRef.current,element=host.current;if(!view||!element||status!=="ready")return;applyFoliateLayout(view,element,settings);for(const item of view.renderer.getContents?.()||[])if(item.doc)void applyEpubDocumentFont(item.doc,settings);let frame=0,lastWidth=element.clientWidth;const observer=new ResizeObserver(()=>{const width=element.clientWidth;if(Math.abs(width-lastWidth)<1)return;lastWidth=width;cancelAnimationFrame(frame);frame=requestAnimationFrame(()=>applyFoliateLayout(view,element,settings,false))});observer.observe(element);return()=>{cancelAnimationFrame(frame);observer.disconnect()}},[settings,status]);
   useEffect(()=>{
     const view=viewRef.current;if(!view||status!=="ready")return;let cancelled=false;
     markUpdates.current=markUpdates.current.catch(()=>undefined).then(async()=>{
@@ -793,6 +793,8 @@ function PdfReader({source,sourceBlob,bookId,settings,initialLocation,annotation
   const [reflowProgress,setReflowProgress]=useState(0);
   const [pdfIdentity,setPdfIdentity]=useState<{fingerprint:string;bytes:number}|null>(null);
   const mode=settings.pdfMode||"original";
+  const modeRef=useRef(mode);
+  useEffect(()=>{modeRef.current=mode},[mode]);
   const latestLocator=useRef(initialLocation);
   const previousMode=useRef(mode);
   const [modeLocation,setModeLocation]=useState(initialLocation);
@@ -819,15 +821,15 @@ function PdfReader({source,sourceBlob,bookId,settings,initialLocation,annotation
   },[pdf,pdfIdentity,mode,reflow,bookId]);
   const handlePageRendered=useCallback(()=>setFirstPageReady(true),[]);
   useEffect(()=>{const element=host.current;if(!element||!pdf)return;const update=()=>{setHostWidth(Math.max(320,element.clientWidth));setHostHeight(Math.max(320,element.clientHeight));setLayoutReady(true)};const observer=new ResizeObserver(update);observer.observe(element);update();return()=>observer.disconnect()},[pdf,mode]);
-  useEffect(()=>{let doc:any,cancelled=false,timer=0;(async()=>{const [pdfjs,buffer]=await Promise.all([loadPdfJs(),readSource(source,sourceBlob)]);pdfjs.GlobalWorkerOptions.workerSrc="/vendor/pdf.worker.min.mjs";const fingerprint=await fingerprintBuffer(buffer).catch(()=>"");const sourceBytes=buffer.byteLength;
+  useEffect(()=>{let doc:any,cancelled=false,timer=0;(async()=>{const [pdfjs,buffer]=await Promise.all([loadPdfJs(),readSource(source,sourceBlob)]);pdfjs.GlobalWorkerOptions.workerSrc="/vendor/pdf.worker.min.mjs";const sourceBytes=buffer.byteLength,fingerprintTask=fingerprintBuffer(buffer).catch(()=>""),documentTask=pdfjs.getDocument(pdfDocumentOptions(buffer)).promise;void documentTask.catch(()=>undefined);const fingerprint=await fingerprintTask;
     // Read the validated text cache before waiting for PDF worker parsing.
-    const savedText=await loadSetting<PdfReflowCache>(`pdf-reflow:${bookId}`).catch(()=>null);
+    const savedText=modeRef.current==="text"?await loadSetting<PdfReflowCache>(`pdf-reflow:${bookId}`).catch(()=>null):null;
     if(cancelled)return;
     if(savedText&&validPdfReflowCache(savedText,fingerprint,sourceBytes,savedText.pageCount)){
       setPdfIdentity({fingerprint,bytes:sourceBytes});setReflow(buildPdfReflow(savedText.pages));
       const fallback=Array.from({length:savedText.pageCount},(_,index)=>({id:`pdf-${index+1}`,label:`第 ${index+1} 页`,level:0,page:index+1,locator:JSON.stringify({type:"pdf",page:index+1})}));setToc(fallback);onToc(fallback);
     }
-    doc=await pdfjs.getDocument(pdfDocumentOptions(buffer)).promise;if(cancelled){await doc.destroy();return;}setPdfIdentity({fingerprint,bytes:sourceBytes});const cached=await loadSetting<{fingerprint?:string;sourceBytes?:number;pageRatios?:number[]}>(`analysis:${bookId}`).catch(()=>null);const valid=Boolean(fingerprint&&cached&&cached.fingerprint===fingerprint&&cached.sourceBytes===sourceBytes&&Array.isArray(cached.pageRatios)&&cached.pageRatios.length===doc.numPages&&cached.pageRatios.every(value=>Number.isFinite(value)&&value>0));const ratios:number[]=valid?cached!.pageRatios!:[];const first=await doc.getPage(Math.min(initialPage,doc.numPages)),viewport=first.getViewport({scale:1});const firstRatio=viewport.height/viewport.width;if(cancelled)return;setPageRatio(firstRatio);setPageRatios(valid?ratios:Array.from({length:doc.numPages},()=>firstRatio));setPage(Math.min(initialPage,doc.numPages));setPdf(doc);timer=window.setTimeout(()=>setRenderRadius(1),160);await new Promise(resolve=>setTimeout(resolve,0));for(let start=1;!valid&&start<=doc.numPages;start+=12){if(cancelled){await doc.destroy();return;}ratios.push(...await Promise.all(Array.from({length:Math.min(12,doc.numPages-start+1)},async(_,i)=>{const p=await doc.getPage(start+i),v=p.getViewport({scale:1});return v.height/v.width})));await new Promise(resolve=>setTimeout(resolve,0));}if(cancelled)return;if(!valid){if(previousMode.current==="original"){setModeLocation(JSON.stringify({type:"pdf",page:pageRef.current,offset:scrollSnapshot.current?.offset||0}));restoring.current=true;}setPageRatios(ratios);}void saveSetting(`analysis:${bookId}`,{...cached,totalPages:doc.numPages,analyzedAt:Date.now(),fingerprint,sourceBytes,pageRatios:ratios});const outline=await doc.getOutline();const result:TocItem[]=[];const walk=async(items:any[],level=0)=>{for(const item of items||[]){let pageNumber=1;try{const dest=typeof item.dest==="string"?await doc.getDestination(item.dest):item.dest;if(dest?.[0])pageNumber=await doc.getPageIndex(dest[0])+1}catch{}result.push({id:`pdf-${result.length}`,label:item.title||`第 ${pageNumber} 页`,level,page:pageNumber,locator:JSON.stringify({type:"pdf",page:pageNumber})});await walk(item.items||[],level+1)}};await walk(outline||[]);if(!result.length){for(let value=1;value<=doc.numPages;value++)result.push({id:`pdf-${value}`,label:`第 ${value} 页`,level:0,page:value,locator:JSON.stringify({type:"pdf",page:value})})}setToc(result);onToc(result)})().catch(reason=>{if(!cancelled)setError(reason instanceof Error?reason.message:"PDF 解析失败")});return()=>{cancelled=true;clearTimeout(timer);doc?.destroy?.()}},[source,sourceBlob,bookId,onToc,initialPage]);
+    doc=await documentTask;if(cancelled){await doc.destroy();return;}setPdfIdentity({fingerprint,bytes:sourceBytes});const cached=await loadSetting<{fingerprint?:string;sourceBytes?:number;pageRatios?:number[]}>(`analysis:${bookId}`).catch(()=>null);const valid=Boolean(fingerprint&&cached&&cached.fingerprint===fingerprint&&cached.sourceBytes===sourceBytes&&Array.isArray(cached.pageRatios)&&cached.pageRatios.length===doc.numPages&&cached.pageRatios.every(value=>Number.isFinite(value)&&value>0));const ratios:number[]=valid?cached!.pageRatios!:[];const first=await doc.getPage(Math.min(initialPage,doc.numPages)),viewport=first.getViewport({scale:1});const firstRatio=viewport.height/viewport.width;if(cancelled)return;setPageRatio(firstRatio);setPageRatios(valid?ratios:Array.from({length:doc.numPages},()=>firstRatio));setPage(Math.min(initialPage,doc.numPages));setPdf(doc);timer=window.setTimeout(()=>setRenderRadius(1),160);await new Promise(resolve=>setTimeout(resolve,0));for(let start=1;!valid&&start<=doc.numPages;start+=12){if(cancelled){await doc.destroy();return;}ratios.push(...await Promise.all(Array.from({length:Math.min(12,doc.numPages-start+1)},async(_,i)=>{const p=await doc.getPage(start+i),v=p.getViewport({scale:1});return v.height/v.width})));await new Promise(resolve=>setTimeout(resolve,0));}if(cancelled)return;if(!valid){if(previousMode.current==="original"){setModeLocation(JSON.stringify({type:"pdf",page:pageRef.current,offset:scrollSnapshot.current?.offset||0}));restoring.current=true;}setPageRatios(ratios);}void saveSetting(`analysis:${bookId}`,{...cached,totalPages:doc.numPages,analyzedAt:Date.now(),fingerprint,sourceBytes,pageRatios:ratios});const outline=await doc.getOutline();const result:TocItem[]=[];const walk=async(items:any[],level=0)=>{for(const item of items||[]){let pageNumber=1;try{const dest=typeof item.dest==="string"?await doc.getDestination(item.dest):item.dest;if(dest?.[0])pageNumber=await doc.getPageIndex(dest[0])+1}catch{}result.push({id:`pdf-${result.length}`,label:item.title||`第 ${pageNumber} 页`,level,page:pageNumber,locator:JSON.stringify({type:"pdf",page:pageNumber})});await walk(item.items||[],level+1)}};await walk(outline||[]);if(!result.length){for(let value=1;value<=doc.numPages;value++)result.push({id:`pdf-${value}`,label:`第 ${value} 页`,level:0,page:value,locator:JSON.stringify({type:"pdf",page:value})})}setToc(result);onToc(result)})().catch(reason=>{if(!cancelled)setError(reason instanceof Error?reason.message:"PDF 解析失败")});return()=>{cancelled=true;clearTimeout(timer);doc?.destroy?.()}},[source,sourceBlob,bookId,onToc,initialPage]);
   const widthHint=Math.max(260,Math.min(1200,hostWidth));
   const pageHint=Math.max(240,Math.min(widthHint,hostHeight/pageRatio));
   const scaleHint=fitMode==="page"?pageHint:widthHint;
@@ -835,7 +837,7 @@ function PdfReader({source,sourceBlob,bookId,settings,initialLocation,annotation
   const slotHeight=scaleHint*zoom*(pageRatios[page-1]||pageRatio)+24;
   const pageWidth=scaleHint*zoom;
   const trackWidth=pageWidth>hostWidth?pageWidth+32:hostWidth;
-  useLayoutEffect(()=>{if(!pdf||mode!=="original"||!layoutReady||!restoring.current)return;const frame=requestAnimationFrame(()=>{const element=host.current;if(!element)return;const saved=parseLocator<PdfLocator>(modeLocation),bounded=Math.min(saved?.page||initialPage,pdf.numPages);element.scrollTop=(offsets[bounded-1]||0)+(saved?.offset??pageOffset)*(offsets[bounded]-offsets[bounded-1]);element.scrollLeft=Math.max(0,(trackWidth-element.clientWidth)/2);requestAnimationFrame(()=>{restoring.current=false;setPage(bounded)})});return()=>cancelAnimationFrame(frame)},[pdf,layoutReady,initialPage,slotHeight,trackWidth,offsets,pageOffset,mode,modeLocation]);
+
   const scrollToPage=useCallback((target:number,behavior:ScrollBehavior="instant")=>{scrollUpdates.current?.cancel();scrollSnapshot.current=null;const bounded=Math.min(pdf?.numPages||target,Math.max(1,target));pageRef.current=bounded;setPage(bounded);setPageOffset(0);requestAnimationFrame(()=>host.current?.scrollTo({top:offsets[bounded-1]||0,behavior}))},[pdf,offsets,scrollUpdates]);
   const goTo=useCallback((locator:string)=>{const target=parseLocator<PdfLocator>(locator);if(!target||!pdf)return;restoring.current=false;scrollToPage(target.page);const bounded=Math.min(pdf.numPages,Math.max(1,target.page)),fraction=Math.max(0,Math.min(.99,target.offset??((target.rects?.[0]?.y||0)-.15)));requestAnimationFrame(()=>{if(host.current)host.current.scrollTop=offsets[bounded-1]+fraction*(offsets[bounded]-offsets[bounded-1]);});},[scrollToPage,pdf,offsets]);
   const next=useCallback(()=>scrollToPage(pageRef.current+1),[scrollToPage]);
@@ -843,6 +845,7 @@ function PdfReader({source,sourceBlob,bookId,settings,initialLocation,annotation
   const search=useCallback(async(query:string):Promise<ReaderSearchResult[]>=>{const needle=query.trim().toLocaleLowerCase();if(!pdf||!needle)return[];const results:ReaderSearchResult[]=[];for(let start=1;start<=pdf.numPages&&results.length<100;start+=6){const numbers=Array.from({length:Math.min(6,pdf.numPages-start+1)},(_,index)=>start+index);const texts=await Promise.all(numbers.map(async pageNumber=>{const cached=textCache.current.get(pageNumber);if(cached!==undefined)return cached;const pdfPage=await pdf.getPage(pageNumber),content=await pdfPage.getTextContent();const value=content.items.map((item:any)=>item.str||"").join(" ");textCache.current.set(pageNumber,value);return value}));texts.forEach((value,index)=>{const lower=value.toLocaleLowerCase();let cursor=0;while(results.length<100){const found=lower.indexOf(needle,cursor);if(found<0)break;const pageNumber=numbers[index];results.push({id:`pdf-search-${pageNumber}-${found}`,label:`第 ${pageNumber} 页`,excerpt:value.slice(Math.max(0,found-34),Math.min(value.length,found+needle.length+52)).replace(/\s+/g," "),locator:JSON.stringify({type:"pdf",page:pageNumber}),page:pageNumber});cursor=found+Math.max(1,needle.length)}})}return results},[pdf]);
   useEffect(()=>{if(mode!=="original")return;onApi({next,prev,goTo,search});return()=>onApi(null)},[next,prev,goTo,search,onApi,mode]);
   const reportPdfLocation=useCallback((currentPage:number,offset:number)=>{if(!pdf||mode!=="original"||restoring.current)return;let chapterIndex=0;toc.forEach((item,index)=>{const loc=parseLocator<PdfLocator>(item.locator);if((loc?.page||1)<=currentPage)chapterIndex=index});latestLocator.current=JSON.stringify({type:"pdf",page:currentPage,offset});onLocation({locator:latestLocator.current,progress:currentPage/pdf.numPages*100,page:currentPage,totalPages:pdf.numPages,chapterTitle:toc[chapterIndex]?.label||`第 ${currentPage} 页`,chapterIndex,chapterCount:toc.length})},[pdf,toc,onLocation,mode]);
+  useLayoutEffect(()=>{if(!pdf||mode!=="original"||!layoutReady||!restoring.current)return;let second=0,active=true;const frame=requestAnimationFrame(()=>{const element=host.current;if(!element||!active)return;const saved=parseLocator<PdfLocator>(modeLocation),bounded=Math.min(saved?.page||initialPage,pdf.numPages);element.scrollTop=(offsets[bounded-1]||0)+(saved?.offset??pageOffset)*(offsets[bounded]-offsets[bounded-1]);element.scrollLeft=Math.max(0,(trackWidth-element.clientWidth)/2);second=requestAnimationFrame(()=>{if(!active)return;restoring.current=false;setPage(bounded);const top=element.scrollTop-(offsets[bounded-1]||0),height=Math.max(1,(offsets[bounded]||0)-(offsets[bounded-1]||0));reportPdfLocation(bounded,Math.max(0,Math.min(.99,top/height)))})});return()=>{active=false;cancelAnimationFrame(frame);cancelAnimationFrame(second)}},[pdf,layoutReady,initialPage,slotHeight,trackWidth,offsets,pageOffset,mode,modeLocation,reportPdfLocation]);
   useLayoutEffect(()=>{commitScroll.current=()=>{const value=scrollSnapshot.current;if(value){setPage(value.page);setPageOffset(value.offset);reportPdfLocation(value.page,value.offset)}}},[reportPdfLocation]);
   useEffect(()=>{const scheduler=createReadingScheduler(()=>commitScroll.current());scrollUpdates.current=scheduler;const flush=()=>scheduler.flush();window.addEventListener("pagehide",flush);window.addEventListener("blur",flush);document.addEventListener("visibilitychange",flush);return()=>{scheduler.flush();scheduler.cancel();scrollUpdates.current=null;window.removeEventListener("pagehide",flush);window.removeEventListener("blur",flush);document.removeEventListener("visibilitychange",flush)}},[]);
   useEffect(()=>reportPdfLocation(page,pageOffset),[page,pageOffset,reportPdfLocation]);

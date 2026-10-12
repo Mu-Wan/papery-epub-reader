@@ -1,0 +1,4 @@
+/* Keep scroll containers and their keyboard/touch behavior; hide only the rails. */
+.appShell, .appShell * {scrollbar-width:none!important;}
+.appShell::-webkit-scrollbar, .appShell *::-webkit-scrollbar {display:none!important;width:0!important;height:0!important;}
+.appShell .framedDialog > .dialogScroll {scrollbar-gutter:auto!important;padding-inline-end:0!important;margin-inline-end:0!important;}

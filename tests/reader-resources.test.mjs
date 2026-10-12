@@ -18,6 +18,22 @@ async function fixture(text) {
   return writer.close();
 }
 
+test('Oversized EPUB entries are rejected before decompression while other chapters remain readable', async () => {
+  const archive = await openEpubArchive('oversized-entry', await fixture('safe chapter'));
+  const item = archive.entries.find(entry => entry.filename === 'chapter.xhtml');
+  const original = item.getData;
+  let extracted = false;
+  item.getData = () => { extracted = true; throw new Error('unexpected decompression'); };
+  item.uncompressedSize = 65 * 1024 * 1024;
+  await assert.rejects(archive.loadText('chapter.xhtml'), /无法安全打开/);
+  await assert.rejects(archive.loadBlob('chapter.xhtml'), /无法安全打开/);
+  assert.equal(extracted, false);
+  item.getData = original;
+  item.uncompressedSize = 12;
+  assert.equal(await archive.loadText('chapter.xhtml'), 'safe chapter');
+  releaseReaderResources('oversized-entry');
+});
+
 test('Resource loads are deduplicated and cache eviction never invalidates returned data', async () => {
   const cache = new ResourceCache(8, 2);
   let loads = 0, finish;

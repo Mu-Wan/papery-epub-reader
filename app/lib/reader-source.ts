@@ -1,3 +1,4 @@
+import "./reader-compat.mjs";
 import { loadPdfJs } from "./pdf-loader";
 import { readBlobBytes } from "./blob-bytes";
 import { releaseReaderResources } from "./reader-resources.mjs";

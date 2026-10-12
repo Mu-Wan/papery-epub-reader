@@ -1,6 +1,6 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {installMobileInsets,installVolumePaging,isLowMemoryDevice} from '../app/lib/mobile-runtime.ts';
+import {installMobileInsets,installVolumePaging,isLowMemoryDevice,consumeReaderRecovery} from '../app/lib/mobile-runtime.ts';
 
 function environment(){
   const runtime=new EventTarget(),doc=new EventTarget(),properties=new Map(),switches=[];
@@ -45,4 +45,9 @@ test('Dialog height follows keyboard/rotation and falls back on older WebViews',
 test('Low-memory adaptation uses native capabilities without changing ordinary devices',()=>{
   const {runtime}=environment();runtime.PaperyReader.getPerformanceProfile=()=>'{"lowMemory":true}';assert.equal(isLowMemoryDevice(),true);
   runtime.PaperyReader.getPerformanceProfile=()=>'{"lowMemory":false}';assert.equal(isLowMemoryDevice(),false);
+});
+test('Renderer recovery notice is consumed once and unavailable bridges remain safe',()=>{
+ const {runtime}=environment();let pending=true;runtime.PaperyReader.consumeRecoveryNotice=()=>{const result=pending;pending=false;return result};
+ assert.equal(consumeReaderRecovery(),true);assert.equal(consumeReaderRecovery(),false);
+ runtime.PaperyReader.consumeRecoveryNotice=()=>{throw Error('old bridge')};assert.equal(consumeReaderRecovery(),false);
 });

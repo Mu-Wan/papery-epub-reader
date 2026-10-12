@@ -1,3 +1,4 @@
+import './reader-compat.mjs';
 // Cache immutable extracted data, never EPUB instances, documents or blob URLs.
 // Each reading session still owns its own Foliate Loader and resource refcounts.
 export class ResourceCache {
@@ -62,13 +63,14 @@ export function openEpubArchive(source, sourceBlob) {
       let decoded; try { decoded = decodeURIComponent(name); } catch { return null; }
       return map.get(decoded) || null;
     };
+    const bounded = (item,limit) => {if(item.uncompressedSize>limit)throw new Error('书籍中的单个章节或资源过大，无法安全打开');return item};
     return {
       entries,
       getSize: name => find(name)?.uncompressedSize || 0,
       loadText: name => { const item = find(name); return item
-        ? entry.cache.get(`text:${item.filename}`, () => item.getData(new TextWriter())) : null; },
+        ? entry.cache.get(`text:${item.filename}`, () => bounded(item,32*1024*1024).getData(new TextWriter())) : null; },
       loadBlob: (name, type) => { const item = find(name); return item
-        ? entry.cache.get(`blob:${type || ''}:${item.filename}`, () => item.getData(new BlobWriter(type))) : null; },
+        ? entry.cache.get(`blob:${type || ''}:${item.filename}`, () => bounded(item,64*1024*1024).getData(new BlobWriter(type))) : null; },
     };
   })();
   archives.set(source, entry);

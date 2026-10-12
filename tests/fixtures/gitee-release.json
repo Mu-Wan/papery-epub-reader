@@ -1,0 +1,28 @@
+[
+  {
+    "tag_name": "papery-v0.1.50",
+    "prerelease": false,
+    "assets": [
+      {
+        "browser_download_url": "https://gitee.com/mu-wan/papery-epub-reader/releases/download/papery-v0.1.50/SHA256SUMS.txt",
+        "name": "SHA256SUMS.txt"
+      },
+      {
+        "browser_download_url": "https://gitee.com/mu-wan/papery-epub-reader/releases/download/papery-v0.1.50/Papery-0.1.50-Windows-x64-Setup.exe",
+        "name": "Papery-0.1.50-Windows-x64-Setup.exe"
+      },
+      {
+        "browser_download_url": "https://gitee.com/mu-wan/papery-epub-reader/releases/download/papery-v0.1.50/Papery-0.1.50-Android-arm64.apk",
+        "name": "Papery-0.1.50-Android-arm64.apk"
+      },
+      {
+        "browser_download_url": "https://gitee.com/mu-wan/papery-epub-reader/archive/refs/tags/papery-v0.1.50.zip",
+        "name": "papery-v0.1.50.zip"
+      },
+      {
+        "browser_download_url": "https://gitee.com/mu-wan/papery-epub-reader/archive/refs/tags/papery-v0.1.50.tar.gz",
+        "name": "papery-v0.1.50.tar.gz"
+      }
+    ]
+  }
+]
