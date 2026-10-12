@@ -11,6 +11,8 @@ import "./appearance-and-shelves.css";
 import "./dialog-and-updates.css";
 import "./library-reading-desk.css";
 import "./hidden-scrollbars.css";
+import "./txt-chapters.css";
+import "./checkbox.css";
 
 // Use local font files to avoid network dependency during build.
 // Geist fonts are cached in .vinext/fonts/ from previous builds.

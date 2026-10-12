@@ -2,9 +2,9 @@ import type { BookFormat, ReaderSettings } from "./reader-types";
 
 export const READER_DEFAULTS_KEY = "reader-defaults";
 
-/** Typography is shared across books; chapter rules and PDF mode belong to each book. */
+/** Typography and saved TXT recognition are shared; PDF mode belongs to each book. */
 export function resolveReaderPreferences(defaults: ReaderSettings, profile: Partial<ReaderSettings> | null, book: Partial<ReaderSettings> | null, format: BookFormat, mobile: boolean): ReaderSettings {
-  const merged = { ...defaults, ...book, ...profile, txtChapterRule:book?.txtChapterRule??profile?.txtChapterRule, pdfMode:book?.pdfMode??profile?.pdfMode??defaults.pdfMode };
+  const merged = { ...defaults, ...book, ...profile, txtChapterRule:profile?.txtChapterRule??book?.txtChapterRule, pdfMode:book?.pdfMode??profile?.pdfMode??defaults.pdfMode };
   if(format==="PDF"&&merged.pdfMode!=="text") {merged.horizontalMargin=book?.horizontalMargin??defaults.horizontalMargin;merged.verticalMargin=book?.verticalMargin??defaults.verticalMargin;}
   for(const [field,min,max] of [["fontSize",14,32],["lineHeight",1.3,2.6],["paragraphSpacing",0,36],["verticalMargin",0,300],["horizontalMargin",2,300]] as const){
     const value=merged[field];merged[field]=Number.isFinite(value)?Math.max(min,Math.min(max,value)):defaults[field];

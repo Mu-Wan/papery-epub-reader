@@ -19,9 +19,9 @@ node scripts/publish-gitee.mjs --check
 完成安装包核验并推送主分支及对应标签后发布：
 
 ```powershell
-node scripts/publish-gitee.mjs 0.1.53
+node scripts/publish-gitee.mjs 0.1.54
 ```
 
-发布脚本读取 `output/release-0.1.53/` 中的 Windows EXE、Android APK、`SHA256SUMS.txt` 和 `更新汇总.md`。它核验本地清单、确认远程标签已存在、创建发行版、上传附件，并通过公开下载重新检查文件大小和 SHA-256。重试时，已有同名附件通过校验后直接复用；校验不符时停止，不覆盖或删除现有附件。
+发布脚本读取 `output/release-0.1.54/` 中的 Windows EXE、Android APK、`SHA256SUMS.txt` 和 `更新汇总.md`。它核验本地清单、确认远程标签已存在、创建发行版、上传附件，并通过公开下载重新检查文件大小和 SHA-256。重试时，已有同名附件通过校验后直接复用；校验不符时停止，不覆盖或删除现有附件。
 
 接口参考：[Gitee OpenAPI v5](https://gitee.com/api/v5/swagger)。

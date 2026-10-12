@@ -213,10 +213,10 @@ export async function saveReaderSettings(bookId:string,value:ReaderSettings,shar
   tx.oncomplete=()=>resolve();tx.onerror=()=>reject(tx.error);tx.onabort=()=>reject(tx.error);
  });
 }
-export async function saveTxtChapterSettings(bookId:string,value:ReaderSettings,makeDefault:boolean,previousRule?:ReaderSettings["txtChapterRule"]){
+export async function saveTxtChapterSettings(bookId:string,value:ReaderSettings){
  const db=await getLibrary();await new Promise<void>((resolve,reject)=>{
   const tx=db.transaction(SETTINGS,"readwrite"),store=tx.objectStore(SETTINGS),now=Date.now();store.put({key:`reader:${bookId}`,value,updatedAt:now});
-  const request=store.get("txt-chapter-default");request.onsuccess=()=>{if(makeDefault)store.put({key:"txt-chapter-default",value:value.txtChapterRule,updatedAt:now});else if(request.result?.value&&JSON.stringify(request.result.value)===JSON.stringify(previousRule))store.put({key:"txt-chapter-default",value:null,updatedAt:now})};
+  store.put({key:"txt-chapter-default",value:value.txtChapterRule,updatedAt:now});
   tx.oncomplete=()=>resolve();tx.onerror=()=>reject(tx.error);tx.onabort=()=>reject(tx.error);
  });
 }

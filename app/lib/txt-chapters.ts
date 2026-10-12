@@ -1,4 +1,5 @@
-export type TxtChapterRule={name:string;mode:"auto"|"simple"|"regex";chapterPattern:string;volumePattern?:string};
+export type TxtSimpleOptions={chinese:boolean;english:boolean;numeric:boolean;special:boolean;volumes:boolean;maxTitleLength:number};
+export type TxtChapterRule={name:string;mode:"auto"|"simple"|"regex";chapterPattern:string;volumePattern?:string;simple?:TxtSimpleOptions};
 export type TxtChapterEntry={title:string;offset:number;index:number;level?:number};
 export const TXT_DEFAULT_RULE_KEY="txt-chapter-default";
 export const automaticTxtRule:TxtChapterRule={name:"自动识别",mode:"auto",chapterPattern:""};

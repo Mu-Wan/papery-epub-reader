@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import ts from 'typescript';
 import {annotationPaint} from '../app/lib/annotation-color.ts';
+import {recognizeTxtChapters} from '../app/lib/txt-chapter-rules.mjs';
 
 // Test the actual TXT helpers without changing the EPUB/PDF implementation or
 // booting a browser. TypeScript's parser preserves the production function body.
@@ -11,7 +12,7 @@ const ast=ts.createSourceFile('DocumentReader.tsx',source,ts.ScriptTarget.Latest
 const names=['decodeTxt','parseTxt','paragraphsForRange','buildTxtSections','escapeHtml','renderMarkedText','textAnchorContext','matchingPrefix','matchingSuffix','resolveTextOffset'];
 const functions=ast.statements.filter(node=>ts.isFunctionDeclaration(node)&&names.includes(node.name?.text)).map(node=>node.getText(ast)).join('\n');
 const compiled=ts.transpileModule(functions,{compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText;
-const {decodeTxt,parseTxt,paragraphsForRange,buildTxtSections,renderMarkedText,textAnchorContext,resolveTextOffset}=new Function('annotationPaint',`${compiled};return {${names.join(',')}}`)(annotationPaint);
+const {decodeTxt,parseTxt,paragraphsForRange,buildTxtSections,renderMarkedText,textAnchorContext,resolveTextOffset}=new Function('annotationPaint','recognizeTxtChapters',`${compiled};return {${names.join(',')}}`)(annotationPaint,recognizeTxtChapters);
 
 test('TXT decodes UTF-8/BOM, UTF-16 and GB18030 without losing Chinese text',()=>{
   const buffer=bytes=>Uint8Array.from(bytes).buffer;

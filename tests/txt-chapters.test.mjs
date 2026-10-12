@@ -1,8 +1,30 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {compileChapterPattern,recognizeTxtChapters} from '../public/vendor/txt-chapter-rules.mjs';
+import {compileChapterPattern,recognizeTxtChapters,defaultSimpleOptions} from '../app/lib/txt-chapter-rules.mjs';
 import {recoverReadingProgress} from '../app/lib/reading-journal.ts';
 import {sameReadingAnchor} from '../app/lib/reading-anchor.ts';
+import {resolveReaderPreferences} from '../app/lib/reader-preferences.ts';
+import {defaultReaderSettings} from '../app/lib/reader-types.ts';
+
+test('Guided simple recognition covers mixed Chinese, full-width, financial, English and Roman headings without changing anchors',()=>{
+ const titles=['序章','【第壹佰章】 起点','第１２３章 夜雨','第 50 节 风起','正文 第一回 天光','第一卷 归途','卷二 新路','上卷','Chapter IV: Rain','Chapter One: Dawn','Chapter123. Light','PART II','Volume 2: Road','Book III','001、天光','一、云开','（三）归来','1.2 小节','1.2.3Further Study','终章','番外（二）','附录 A','Epilogue'];
+ const text=titles.map(t=>`  ${t}\n普通正文，不应成为章节。\n`).join('');
+ const chapters=recognizeTxtChapters(text,{mode:'simple',chapterPattern:'',simple:defaultSimpleOptions});
+ assert.deepEqual(chapters.map(c=>c.title),titles);for(const c of chapters)assert.equal(text.slice(c.offset,c.offset+c.title.length),c.title);
+ assert.equal(chapters.find(c=>c.title==='第一卷 归途').level,0);assert.equal(chapters.find(c=>c.title==='Chapter IV: Rain').level,1);
+});
+test('Guided recognition filters dates, decimal-only data, prose using volume measure words and overlong body lines',()=>{
+ const titles=['2026-10-12','2026/10/12','12.7','314.159','62.8318','第一部落在山谷中。','第一册书已经看完了','第一章已经讲完了。','I have read Chapter 1 today.','序言介绍了全书的结构','001. '+('正文'.repeat(100))];
+ assert.deepEqual(recognizeTxtChapters(titles.join('\n'),{mode:'auto'}),[]);
+ const selected={...defaultSimpleOptions,chinese:false,english:false,numeric:false,special:false,volumes:false};
+ assert.deepEqual(recognizeTxtChapters('第一章\nChapter 2\n序章\n001、标题',{mode:'simple',chapterPattern:'故事*',simple:selected}),[]);
+ assert.equal(recognizeTxtChapters('故事 雨落\n第一章',{mode:'simple',chapterPattern:'故事*',simple:selected}).length,1);
+});
+test('The saved TXT default overrides legacy per-book rules and automatic reset also overrides them',()=>{
+ const legacy={name:'legacy',mode:'regex',chapterPattern:'^old$'},rule={name:'simple',mode:'simple',chapterPattern:'',simple:defaultSimpleOptions};
+ assert.equal(resolveReaderPreferences(defaultReaderSettings,{txtChapterRule:rule},{txtChapterRule:legacy},'TXT',false).txtChapterRule,rule);
+ const auto={name:'auto',mode:'auto',chapterPattern:''};assert.equal(resolveReaderPreferences(defaultReaderSettings,{txtChapterRule:auto},{txtChapterRule:legacy},'TXT',false).txtChapterRule,auto);
+});
 test('Simple patterns are anchored and treat regex punctuation literally; Unicode and wildcard matches preserve offsets',()=>{
  const text='前言\n  第一卷 起点\n第一章 天光\n正文\n第二章 下雨\n第二卷 归途\n第三章 归来\n';
  const chapters=recognizeTxtChapters(text,{mode:'simple',chapterPattern:'第*章*',volumePattern:'第*卷*'});

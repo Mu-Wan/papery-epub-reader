@@ -1,6 +1,6 @@
 [package]
 name = "papery-reader"
-version = "0.1.53"
+version = "0.1.54"
 description = "Papery 阅读器"
 authors = []
 edition = "2021"

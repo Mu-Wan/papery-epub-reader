@@ -1,0 +1,47 @@
+.appShell .chapterRuleDialog {width:min(600px,calc(100vw - 32px));gap:22px;}
+.appShell .chapterRuleFields {gap:22px;}
+.appShell .chapterMode {display:flex;align-items:stretch;align-self:flex-start;padding:4px;gap:4px;background:var(--surface-inset);border-radius:9px;}
+.appShell .chapterMode button {position:relative;min-width:94px;min-height:40px;padding:8px 20px;background:transparent;color:var(--secondary);border:0;border-radius:6px;font-size:14px;line-height:1.4;transition:background 120ms,color 120ms;}
+.appShell .chapterMode button[aria-selected=true] {background:var(--solid);color:var(--on-solid);}
+.appShell .chapterMode button:hover:not([aria-selected=true]) {background:var(--surface);color:var(--ink);}
+.appShell .chapterMode button:focus-visible {outline:2px solid var(--accent);outline-offset:-3px;}
+.appShell .chapterModeContent {display:flex;flex-direction:column;gap:18px;}
+.appShell .chapterFormats {margin:0;padding:0;border:0;display:flex;flex-direction:column;gap:3px;min-width:0;}
+.appShell .chapterFormats legend {padding:0;margin-bottom:12px;color:var(--secondary);font-size:12px;}
+.appShell .chapterRuleFields .chapterFormat {display:grid;grid-template-columns:20px minmax(0,1fr);align-items:center;gap:12px;min-height:54px;padding:6px 0;cursor:pointer;}
+.appShell .chapterFormat > .checkboxCopy {display:flex;flex-direction:row;align-items:baseline;justify-content:space-between;gap:20px;min-width:0;}
+.appShell .chapterRuleFields .chapterFormat input {width:18px;min-width:18px;height:18px;min-height:18px;margin:0;padding:0;border-radius:3px;accent-color:var(--accent-ink);cursor:pointer;}
+.appShell .chapterFormat small {font-size:12px;line-height:1.6;color:var(--secondary);text-align:right;}
+.appShell .chapterRuleFields label:not(.chapterFormat) {display:flex;flex-direction:column;gap:8px;font-size:13px;}
+.appShell .chapterRuleFields .chapterTextField {display:block;box-sizing:border-box;width:100%;max-width:100%;min-width:0;min-height:44px;margin:0;padding:11px 12px;border:1px solid var(--outline);border-radius:7px;background:var(--surface-muted);color:var(--ink);font-size:14px;line-height:1.65;resize:vertical;}
+.appShell .chapterRuleFields textarea.chapterTextField {max-height:260px;}
+.appShell .chapterTextField:focus-visible {outline:none!important;box-shadow:inset 0 0 0 2px var(--accent-ink);border-color:transparent;}
+.appShell .chapterExtras {margin-top:6px;}
+.appShell .chapterExtras summary {display:flex;align-items:center;gap:7px;font-size:12px;color:var(--secondary);cursor:pointer;padding:8px 0;list-style:none;}
+.appShell .chapterExtras summary::-webkit-details-marker {display:none;}
+.appShell .chapterExtras summary svg {flex-shrink:0;transition:transform 120ms;}
+.appShell .chapterExtras[open] summary svg {transform:rotate(90deg);}
+.appShell .chapterExtraFields {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px;margin-top:14px;}
+.appShell .chapterRuleFields .chapterExtras p {margin-top:14px;}
+.appShell .chapterRuleFields :is(.chapterExtras p,.chapterFieldHint) {font-size:12px;line-height:1.7;color:var(--secondary);margin:0;}
+.appShell .chapterOptional {font-size:11px;color:var(--secondary);}
+.appShell .chapterSample {display:flex;gap:16px;align-items:flex-end;min-width:0;}
+.appShell .chapterSample label {flex:1;min-width:0;}
+.appShell .chapterTextAction {min-height:44px;flex-shrink:0;padding:8px 0 8px 8px;color:var(--accent-ink);font-size:13px;white-space:nowrap;}
+.appShell .chapterPreviewAction {align-self:flex-start;min-height:40px;padding:8px 0;color:var(--accent-ink);font-size:13px;text-align:left;}
+.appShell .chapterSampleResult {margin-top:-12px!important;color:var(--secondary);}
+.appShell .chapterPreview p {color:var(--ink);}
+.appShell .chapterPreview ol {list-style:none;margin:14px 0 0;padding:0;display:flex;flex-direction:column;gap:9px;font-size:13px;line-height:1.7;overflow-wrap:anywhere;}
+.appShell .chapterPreview small {display:block;margin-top:12px;color:var(--secondary);}
+.appShell .chapterFooter {display:flex;align-items:center;justify-content:space-between;gap:24px;flex-shrink:0;padding-top:2px;}
+.appShell .chapterFooter .uiButton {min-width:160px;border-radius:8px;}
+.appShell .chapterReset {font-size:12px;color:var(--secondary);padding:10px 0;text-align:left;}
+.appShell .chapterRuleDialog button:disabled {opacity:.5;cursor:default;}
+.appShell[data-mobile=true] .chapterRuleDialog {gap:18px;}
+.appShell[data-mobile=true] .chapterFormat > .checkboxCopy {flex-direction:column;gap:3px;}
+.appShell[data-mobile=true] .chapterExtraFields {grid-template-columns:1fr;gap:20px;}
+.appShell[data-mobile=true] .chapterFormat small {text-align:left;font-size:12px;}
+.appShell[data-mobile=true] .chapterFooter {gap:16px;}
+.appShell[data-mobile=true] .chapterFooter .uiButton {min-width:130px;}
+@media(max-width:360px){.appShell .chapterSample {gap:8px;}.appShell .chapterTextAction {font-size:12px;}.appShell .chapterFooter .uiButton {min-width:112px;}}
+@media(prefers-reduced-motion:reduce){.appShell .chapterMode button,.appShell .chapterExtras summary svg {transition:none;}}

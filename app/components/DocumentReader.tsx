@@ -2,6 +2,7 @@
 
 import { forwardReadingPoint,readingAnchorRange,paginatedReadingPoint } from "../lib/epub-reading-point";
 import { matchTxtChapters, type TxtChapterEntry } from "../lib/txt-chapters";
+import { recognizeTxtChapters } from "../lib/txt-chapter-rules.mjs";
 import { continuousTouchPoint } from "../lib/epub-scroll-layout";
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
@@ -192,15 +193,7 @@ type TxtSection = { start: number; end: number; index: number };
 
 function parseTxt(text: string) {
   const normalized = text.replace(/\r\n?/g, "\n").replace(/\u0000/g, "");
-  const chapters: TxtChapter[] = [];
-  const chapterPattern = /^\s*((?:正文\s*)?第\s*[0-9零〇一二三四五六七八九十百千万两]+\s*[集卷部篇章节回幕]|[Cc]hapter\s+\d+|序章|序言|前言|楔子|引子|后记|尾声|番外|\d{1,4}(?!\d)(?:\s*[.、:：\-—]\s*\S|[\s.、:：\-—]*$))/;
-  for (const match of normalized.matchAll(/[^\n]*/g)) {
-    const raw=match[0],offset=match.index||0;
-    const value = raw.trim();
-    if (value && value.length<=120 && (chapterPattern.test(value) || (value.length < 28 && /[章节卷篇]$/.test(value)))) {
-      chapters.push({ title: value, offset: offset + Math.max(0, raw.indexOf(value)), index: chapters.length });
-    }
-  }
+  const chapters: TxtChapter[] = recognizeTxtChapters(normalized,{mode:"auto"});
   if (!chapters.length) chapters.push({ title: "正文", offset: 0, index: 0 });
   return { normalized, chapters };
 }
